@@ -1,0 +1,256 @@
+:root {
+  --accent: #1a8cff;
+  --accent-strong: #0f7ae6;
+  --text: #1d1c1d;
+  --text-sub: #616061;
+  --line: #bbbaba;
+  --line-soft: #dddddd;
+  --danger: #e01e5a;
+  --notice-bg: #f8f8f8;
+  --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+  --w: 400px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+a { color: inherit; }
+
+/* ---------- 상단 바 ---------- */
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 32px 0;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.topbar-link {
+  color: #1264a3;
+  font-weight: 700;
+  text-decoration: none;
+}
+.topbar-link:hover { text-decoration: underline; }
+
+/* ---------- 메인 ---------- */
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 16px 40px;
+  text-align: center;
+}
+
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  background: url("../assets/logo.png") no-repeat;
+  background-size: 200px auto;
+  background-position: calc(50% - 1px) calc(50% - 5px);
+  /* 흰색 로고 → 짙은 색으로 반전, 파란 사각형은 색상 유지 */
+  filter: invert(1) hue-rotate(180deg) brightness(1.15);
+  margin-bottom: 36px;
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.subtitle {
+  margin: 0 0 36px;
+  font-size: 17px;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+.subtitle strong { color: var(--text); font-weight: 700; }
+
+/* ---------- SSO 버튼 ---------- */
+.sso {
+  width: 100%;
+  max-width: var(--w);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.btn-outline {
+  height: 44px;
+  border: 1px solid #4a4a4a;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: box-shadow .15s, background .15s;
+}
+.btn-outline:hover { box-shadow: 0 1px 4px rgba(0,0,0,.12); background: #fafafa; }
+.btn-outline svg { width: 18px; height: 18px; }
+
+/* ---------- 구분선 ---------- */
+.divider {
+  width: 100%;
+  max-width: var(--w);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-soft);
+}
+
+/* ---------- 폼 ---------- */
+.form {
+  width: 100%;
+  max-width: var(--w);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #868686;
+  border-radius: 6px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.input::placeholder { color: #8d8d8d; }
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(26,140,255,.25);
+}
+.input-wrap { position: relative; }
+.input-wrap .input { padding-right: 44px; }
+.eye {
+  position: absolute;
+  right: 2px; top: 2px;
+  width: 40px; height: 40px;
+  border: 0;
+  background: transparent;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: #8d8d8d;
+  border-radius: 6px;
+}
+.eye svg { width: 20px; height: 20px; fill: currentColor; }
+.eye:hover { color: var(--text); }
+.eye.is-on { color: var(--accent); }
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+  text-align: left;
+}
+.error[hidden] { display: none; }
+
+.btn-primary {
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-primary:hover { background: var(--accent-strong); }
+
+/* ---------- 안내 박스 ---------- */
+.notice {
+  width: 100%;
+  max-width: var(--w);
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--notice-bg);
+  display: flex;
+  gap: 12px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+.notice svg { width: 20px; height: 20px; flex: none; fill: var(--accent); margin-top: 1px; }
+.notice p { margin: 0; }
+
+.link {
+  color: #1264a3;
+  text-decoration: none;
+  font-weight: 600;
+}
+.link:hover { text-decoration: underline; }
+
+.muted {
+  margin: 32px 0 0;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+/* ---------- 푸터 ---------- */
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 24px 16px 32px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.footer a { text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+.footer-region {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.footer-region svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* ---------- 오류 흔들림 ---------- */
+.form.shake { animation: shake .4s; }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
+}
+
+@media (max-width: 480px) {
+  .title { font-size: 32px; }
+  .subtitle { font-size: 15px; }
+}

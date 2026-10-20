@@ -1,0 +1,62 @@
+/* ===================== 교사용 진행 도구 ===================== */
+.tp-fab {
+  position: fixed; left: 12px; bottom: 12px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(31,42,68,.55); color: #fff;
+  font-size: 12px; font-weight: 800;
+  z-index: 300; opacity: .45;
+}
+.tp-fab:hover { opacity: 1; }
+.tp-panel {
+  position: fixed; left: 12px; bottom: 12px;
+  width: 440px; max-height: 84vh;
+  background: #1f2a44; color: #e5e9f2;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  z-index: 300;
+  display: flex; flex-direction: column;
+  font-size: 13px;
+}
+.tp-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.tp-head b { color: #fff; }
+.tp-head span { flex: 1; font-size: 11px; color: #aab3c5; }
+.tp-head button { color: #aab3c5; font-size: 12px; }
+.tp-body { overflow-y: auto; padding: 6px 14px 14px; }
+.tp-sec { margin-top: 10px; }
+.tp-sec h4 { margin: 0 0 6px; font-size: 12px; color: #aab3c5; text-transform: uppercase; letter-spacing: .06em; }
+.tp-sec h4 small { text-transform: none; letter-spacing: 0; color: #7b86a0; margin-left: 6px; }
+.tp-flags { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+.tp-flags li { display: flex; align-items: center; gap: 6px; color: #7b86a0; }
+.tp-flags li.ok { color: #e5e9f2; }
+.tp-flags li i { width: 14px; font-style: normal; color: #4ade80; }
+.tp-flags li:not(.ok) i { color: #4b5569; }
+.tp-flags small { color: #7b86a0; margin-left: 2px; }
+.tp-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.tp-btns button { height: 28px; padding: 0 10px; border-radius: 6px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px; font-weight: 600; }
+.tp-btns button:hover { background: rgba(255,255,255,.2); }
+.tp-btns button:disabled { opacity: .35; cursor: default; }
+.tp-btns button.danger { background: rgba(239,68,68,.25); }
+.tp-help { margin: 8px 0 0; font-size: 11px; color: #7b86a0; }
+.tp-hints { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tp-hints li { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; background: rgba(255,255,255,.05); border-radius: 6px; padding: 6px 8px; line-height: 1.4; }
+.tp-step { font-size: 11px; color: #aab3c5; }
+.tp-hints button { height: 24px; padding: 0 8px; border-radius: 5px; background: #3b5bdb; color: #fff; font-size: 11px; font-weight: 700; }
+.tp-hints button:disabled { background: rgba(255,255,255,.12); color: #7b86a0; }
+details.tp-sec summary { cursor: pointer; color: #fbbf24; font-weight: 700; }
+.tp-notes { margin: 8px 0; padding-left: 16px; line-height: 1.5; }
+.tp-notes li { margin-bottom: 6px; }
+details.tp-sec p { line-height: 1.5; margin: 6px 0; }
+
+.tp-mission { padding: 6px 14px; font-size: 12px; color: #fbbf24; font-weight: 700; }
+.tp-tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.tp-tabs button { height: 30px; padding: 0 10px; font-size: 12px; color: #aab3c5; border-bottom: 2px solid transparent; }
+.tp-tabs button.on { color: #fff; border-bottom-color: #fbbf24; font-weight: 700; }
+.tp-report { background: rgba(255,255,255,.06); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+.tp-report p { margin: 4px 0; }
+.tp-note { width: 100%; margin: 8px 0 6px; border: 1px solid rgba(255,255,255,.2); border-radius: 6px; background: rgba(0,0,0,.25); color: #fff; font: inherit; font-size: 12px; padding: 6px 8px; resize: vertical; }
+.tp-btns button.ok { background: #16a34a; }
+.tp-list { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.5; max-height: 180px; overflow-y: auto; }
+.tp-list li { margin-bottom: 4px; }
+.tp-list small { color: #aab3c5; }
+.tp-list i { color: #aab3c5; font-style: normal; }
+.tp-step { white-space: normal; }

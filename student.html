@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DAYEON WORK 수업 입장</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/student.css" />
+</head>
+<body>
+  <header class="topbar"><span class="topbar-note" id="mode-note"></span></header>
+  <main class="screen">
+    <div class="brand-logo" role="img" aria-label="로고"></div>
+    <h1 class="title">수업 입장</h1>
+    <p class="subtitle">교사에게 받은 <strong>수업 코드</strong>와 <strong>팀 이름</strong>을 입력하세요.</p>
+
+    <form class="form" id="join-form" autocomplete="off">
+      <input type="text" class="input" id="code" placeholder="수업 코드 (예: A3K9QX)" maxlength="6" style="text-transform:uppercase" />
+      <input type="text" class="input" id="team" placeholder="팀 이름 (예: 1팀, 다연팀)" maxlength="20" />
+      <p class="error" id="error" hidden></p>
+      <button type="submit" class="btn-primary" id="submit">입장 요청</button>
+    </form>
+
+    <div class="wait" id="wait" hidden>
+      <div class="spinner"></div>
+      <h2 id="wait-title">교사 승인을 기다리는 중…</h2>
+      <p id="wait-desc">교사가 입장을 승인하면 자동으로 게임 화면으로 이동합니다.</p>
+      <div class="wait-meta"><span id="wait-code"></span><span id="wait-team"></span></div>
+      <button class="btn-text" id="cancel">요청 취소</button>
+    </div>
+
+    <div class="notice" id="notice"><svg viewBox="0 0 24 24"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2z"/></svg><p>한 팀은 노트북 한 대로 접속합니다. 승인 후에는 같은 브라우저에서 새로고침해도 팀 상태가 유지됩니다.</p></div>
+  </main>
+  <footer class="footer"><a href="index.html">솔로 모드 (교사 1대로 진행)</a><span class="footer-region" id="conn"></span></footer>
+
+  <!-- Firebase (설정이 있을 때만 사용; 없으면 로컬 시뮬레이션) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" onerror="this.remove()"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" onerror="this.remove()"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js" onerror="this.remove()"></script>
+  <script src="js/firebase-config.js" onerror="this.remove()"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/student.js"></script>
+</body>
+</html>

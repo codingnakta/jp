@@ -1,0 +1,25 @@
+/* 학생 입장 화면 (로그인 스타일 재사용) + 라이브 배지 */
+.wait { width: 100%; max-width: 400px; text-align: center; padding: 24px 0; }
+.spinner { width: 36px; height: 36px; border: 3px solid #e5e7eb; border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 18px; animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.wait h2 { margin: 0 0 6px; font-size: 20px; }
+.wait p { margin: 0 0 14px; color: var(--text-sub); font-size: 14px; }
+.wait-meta { display: flex; justify-content: center; gap: 14px; font-size: 13px; color: #374151; margin-bottom: 14px; }
+.wait-meta span { background: #f3f4f6; border-radius: 6px; padding: 4px 10px; }
+.btn-text { color: #6b7280; font-size: 13px; text-decoration: underline; }
+.error { text-align: center; }
+
+/* chat.html 의 라이브 상태 배지 */
+.live-badge { position: fixed; left: 10px; bottom: 10px; z-index: 150; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 12px; background: rgba(15,23,42,.72); color: #fff; font-size: 11px; font-family: var(--font); pointer-events: none; opacity: .85; }
+.live-badge i { width: 8px; height: 8px; border-radius: 50%; background: #2bac76; }
+.live-badge.off i { background: #ef4444; animation: blink 1s infinite; }
+.live-badge b { font-weight: 800; }
+.live-badge .save { color: rgba(255,255,255,.7); }
+.live-badge.err .save { color: #fca5a5; }
+.live-badge .pause { background: #fbbf24; color: #111827; border-radius: 8px; padding: 1px 6px; font-weight: 700; }
+.live-ended { position: fixed; inset: 0; z-index: 500; background: rgba(15,23,42,.85); display: grid; place-items: center; color: #fff; text-align: center; font-family: var(--font); }
+.live-ended h2 { margin: 0 0 8px; font-size: 26px; }
+.live-ended p { margin: 0 0 18px; color: rgba(255,255,255,.7); }
+.live-ended button { height: 40px; padding: 0 20px; border-radius: 8px; background: #fff; color: #111827; font-weight: 700; }
+/* 라이브 모드에서 업무 단계가 잠긴 안내 */
+.t-locked { margin-top: 24px; padding: 14px 16px; border-radius: 10px; background: #f3f4f6; color: #6b7280; font-size: 14px; }

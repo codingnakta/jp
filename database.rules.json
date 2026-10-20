@@ -1,0 +1,90 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "teachers": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "codes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+      }
+    },
+    "sessionIndex": {
+      ".read": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+      "$sid": {
+        ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+      }
+    },
+    "sessions": {
+      "$sid": {
+        "public": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+        },
+        "events": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+        },
+        "private": {
+          ".read": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+          ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+        },
+        "joinRequests": {
+          ".read": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('teachers').child(auth.uid).val() === true)",
+            ".write": "auth != null && ((auth.uid === $uid && (!data.exists() || data.child('status').val() === 'pending' || !newData.exists())) || root.child('teachers').child(auth.uid).val() === true)",
+            ".validate": "!newData.exists() || (newData.hasChildren(['teamName']) && newData.child('teamName').isString() && newData.child('teamName').val().length <= 20)"
+          }
+        },
+        "teams": {
+          ".read": "auth != null",
+          "$teamId": {
+            ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+            "lastSeen": {
+              ".write": "auth != null && data.parent().child('uid').val() === auth.uid"
+            },
+            "online": {
+              ".write": "auth != null && data.parent().child('uid').val() === auth.uid"
+            }
+          }
+        },
+        "members": {
+          ".read": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+          }
+        },
+        "teamData": {
+          ".read": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+          "$teamId": {
+            ".read": "auth != null && (root.child('teachers').child(auth.uid).val() === true || root.child('sessions').child($sid).child('teams').child($teamId).child('uid').val() === auth.uid)",
+            "state": {
+              ".write": "auth != null && (root.child('teachers').child(auth.uid).val() === true || (root.child('sessions').child($sid).child('teams').child($teamId).child('uid').val() === auth.uid && root.child('sessions').child($sid).child('public').child('status').val() !== 'ended'))"
+            },
+            "submissions": {
+              "$task": {
+                ".write": "auth != null && (root.child('teachers').child(auth.uid).val() === true || (root.child('sessions').child($sid).child('teams').child($teamId).child('uid').val() === auth.uid && root.child('sessions').child($sid).child('public').child('tasks').child($task).child('status').val() === 'ACTIVE' && root.child('sessions').child($sid).child('teamData').child($teamId).child('review').child($task).child('locked').val() !== true))"
+              }
+            },
+            "review": {
+              ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+            }
+          }
+        }
+      }
+    },
+    "content": {
+      "private": {
+        ".read": "auth != null && root.child('teachers').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+      }
+    }
+  }
+}
