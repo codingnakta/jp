@@ -354,7 +354,7 @@ function buildGuide() {
     { title: "TASK-005 배정", desc: "긴급 조사 업무 카드 '수상한 배포 기록'이 도착합니다. 첨부: 공유 폴더·디자인 이력·Git 기록·배포 이력·QA·지난 대화·가이드.", ...ch("TASK-005 배정") },
     { title: "TASK-005 조사 시작", desc: "학생 흐름: A 공유 폴더 조사(파일 상세·이상 기록) → B 디자인 이력·Git 기록 + 조사 질문 4개 → C DAYEON DEPLOY 배포 이력·QA·지난 대화 대조, 증거 수집 → D 타임라인 재구성·검증 → E 조사 보고서. 약 20~25분. 힌트(디자인→개발→환경→배포) 순서로 공개하세요.",
       status: `단계: ${PHASE_KO[phaseOf(5)]}`, done: () => phaseAtLeast(5, "ACTIVE"), ready: () => phaseOf(5) === "ANNOUNCED", action: { label: "조사 시작 열기", fn: () => setPhase(5, "ACTIVE") }, tools: true },
-    { title: "조사 보고서 검토·승인", desc: "팀별 버전 불일치·타임라인(자동)·원인·예방 실패·재발 방지·증거를 보고 승인하거나 보완을 요청합니다. 재발 방지 대책은 여러 합리적 답을 허용하세요.", status: `제출 ${s5.submitted}/${s5.teams}팀 · 승인 ${s5.approved} · 대기 ${s5.pending}`, done: () => s5.submitted > 0 && s5.pending === 0, ready: () => phaseOf(5) === "ACTIVE", action: goTab("review", s5.pending ? `검토 대기 ${s5.pending}건 보기` : "보고서 검토 탭"), manualDone: true },
+    { title: "TASK-005 조사 보고서 검토·승인", desc: "팀별 버전 불일치·타임라인(자동)·원인·예방 실패·재발 방지·증거를 보고 승인하거나 보완을 요청합니다. 재발 방지 대책은 여러 합리적 답을 허용하세요.", status: `제출 ${s5.submitted}/${s5.teams}팀 · 승인 ${s5.approved} · 대기 ${s5.pending}`, done: () => s5.submitted > 0 && s5.pending === 0, ready: () => phaseOf(5) === "ACTIVE", action: goTab("review", s5.pending ? `검토 대기 ${s5.pending}건 보기` : "보고서 검토 탭"), manualDone: true },
     { title: "TASK-005 해설 공개", desc: "디자인 v2/v4 차이, 커밋·빌드 관계, 테스트 빌드와 운영 빌드의 차이, 오래된 빌드가 선택된 경위, 확인 절차 부재를 모든 팀과 프로젝터에 공개합니다.", status: T.events.some((e) => e.type === "debrief" && e.task === 5) ? "공개됨" : "미공개", done: () => T.events.some((e) => e.type === "debrief" && e.task === 5), ready: () => phaseAtLeast(5, "ACTIVE"), action: { label: "해설 공개", fn: () => publishDebrief(5) } },
     { title: "TASK-005 종료", desc: "업무를 종료 상태로 표시합니다.", status: `단계: ${PHASE_KO[phaseOf(5)]}`, done: () => phaseOf(5) === "COMPLETED", ready: () => phaseAtLeast(5, "ACTIVE"), action: { label: "종료 처리", fn: () => setPhase(5, "COMPLETED") } },
     { title: "사건의 진실 공개 · TASK-006 예고", desc: "이대리 '...찾았습니다' → 'v1.0.4 vs v1.0.2' → 김팀장 '최종이라고 적힌 폴더에서...' → 시스템 [사고 조사 완료] → '오늘 오후 6시 고객사 시연' → TASK-006 예고.", ...ch("TASK-005 엔딩 · 사건의 진실") },
@@ -364,9 +364,13 @@ function buildGuide() {
 }
 function guideTab() {
   const steps = buildGuide();
+  // 건너뛰기 키는 단계 제목에서 만든다. 제목이 겹치면 뒤 단계에 번호를 붙여 서로 다른 키가 되게 한다
+  // (예전에 TASK-001·TASK-005 의 "조사 보고서 검토·승인" 제목이 같아, 하나를 건너뛰면 둘이 함께 완료 처리되어 가이드가 TASK-005 해설로 건너뛰는 문제가 있었음)
+  const seen = {};
+  steps.forEach((st) => { seen[st.title] = (seen[st.title] || 0) + 1; st.skipId = seen[st.title] > 1 ? `${st.title} (${seen[st.title]})` : st.title; });
   const skipKey = (t) => t.replace(/[.$#\[\]\/ ]/g, "_");
   const skipped = { ...guideSkipped, ...((T.priv && T.priv.guideSkipped) || {}) };   // 건너뛴 단계는 DB(private)에 저장되어 새로고침 후에도 유지
-  steps.forEach((st) => { if (st.manualDone) { const orig = st.done; st.done = () => orig() || !!skipped[skipKey(st.title)]; } });
+  steps.forEach((st) => { if (st.manualDone) { const orig = st.done; st.done = () => orig() || !!skipped[skipKey(st.skipId)]; } });
   // 뒤 단계가 이미 끝났으면 앞의 수동 단계(검토·승인 등)는 지나간 것으로 본다 → 가이드가 앞 단계에 멈추지 않음
   const doneFlags = steps.map((st) => !!st.done());
   const lastDone = doneFlags.lastIndexOf(true);
@@ -382,7 +386,7 @@ function guideTab() {
       if (st.official) {
         actions = `<div class="btns"><button class="primary" data-official="v4">디자인팀 최종 시안(v4) 반영</button>${Object.entries(T.teamData).filter(([, d]) => d.state && d.state.task2 && d.state.task2.design).map(([tid]) => `<button data-official="${tid}">${esc(T.teams[tid] ? T.teams[tid].name : tid)} 팀 수정안 반영</button>`).join("")}</div>`;
       } else if (st.action) {
-        actions = `<div class="btns"><button class="primary big-btn" data-guide="${i}" ${ready && !T.busy ? "" : "disabled"}>${esc(st.action.label)}${st.count ? ` (${st.count}개)` : ""}</button>${st.manualDone ? `<button data-guide-skip="${esc(skipKey(st.title))}">이 단계 건너뛰고 다음으로</button>` : ""}</div>${!ready ? `<p class="help">이 단계는 아직 실행할 수 없습니다. 앞 단계가 끝났는지 확인하세요.</p>` : ""}`;
+        actions = `<div class="btns"><button class="primary big-btn" data-guide="${i}" ${ready && !T.busy ? "" : "disabled"}>${esc(st.action.label)}${st.count ? ` (${st.count}개)` : ""}</button>${st.manualDone ? `<button data-guide-skip="${esc(skipKey(st.skipId))}">이 단계 건너뛰고 다음으로</button>` : ""}</div>${!ready ? `<p class="help">이 단계는 아직 실행할 수 없습니다. 앞 단계가 끝났는지 확인하세요.</p>` : ""}`;
       }
       if (st.tools) actions += `<div class="btns tools"><button data-pause="1">${paused ? "▶ 진행 재개" : "⏸ 일시정지 (토론 시간)"}</button><button data-tab="story">힌트 공개하러 가기</button><button data-tab="teams">학생 현황 보기</button></div>`;
     }
