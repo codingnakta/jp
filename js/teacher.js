@@ -155,7 +155,7 @@ function tpStatus() {
         <button data-tp="complete5" ${!s.task4.done || s.task5.done ? "disabled" : ""}>TASK-005 완료 처리</button>
         <button data-tp="complete6" ${!s.task5.done || s.task6.done ? "disabled" : ""}>TASK-006 완료 처리 (배포 포함)</button>
         <button data-tp="release" ${!(s.task6.release && s.task6.release.requested && s.task6.release.status === "none") ? "disabled" : ""}>공식 배포 실행 (요청 승인)</button>
-        <button data-tp="reveal" ${!t2.started || t2.findingsRevealed ? "disabled" : ""}>검수 결과 공개</button>
+        <button data-tp="reveal" ${!t2.started || t2.answersOpen ? "disabled" : ""}>TASK-002 해설·정답 공개</button>
         <button data-tp="checkP" ${!t2.started || t2.principlesChecked ? "disabled" : ""}>원칙 분석 공개</button>
         <button data-tp="repro3" ${!t2.done || s.followup3.started ? "disabled" : ""}>결제 오류 재현 대화 재생</button>
         <button data-tp="restart2" ${!t2.started ? "disabled" : ""}>TASK-002 다시 시작</button>
@@ -208,7 +208,7 @@ function tpData() {
   const s = G.state, t1 = s.task, t2 = s.task2;
   const inq = t1.inquiriesOpened.map((id) => { const i = INQUIRIES.find((x) => x.id === id); return i ? `<li>${esc(id.replace("CS-251019-", "CS-"))} <small>${esc(i.category)} · 그룹 ${i.g}</small> ${esc(i.title)}</li>` : ""; }).join("");
   const recs = t1.reproduced.map((r) => `<li><b>${esc(r.screenLabel)}</b> <small>${esc(r.type)} · ${esc(r.time)}</small><br>${esc(r.found)}${r.expected ? `<br><i>기대: ${esc(r.expected)}</i>` : ""}</li>`).join("");
-  const finds = t2.findings.map((f) => { const sp = spotInfo(f.spotId); return `<li><b>${esc(sp.label)}</b> <small>${sp.issue ? "사용성 문제" : "단순 차이"}</small>${f.note ? `<br>${esc(f.note)}` : ""}${(t2.principles[sp.id] || []).length ? `<br><i>원칙: ${esc((t2.principles[sp.id] || []).map((id) => TASK2.principles.find((p) => p.id === id).name).join(", "))}</i>` : ""}</li>`; }).join("");
+  const finds = t2.findings.map((f) => { const sp = spotInfo(f.spotId, true); return `<li><b>${esc(sp.label)}</b> <small>${sp.issue ? "사용성 문제" : "단순 차이"}</small>${f.note ? `<br>${esc(f.note)}` : ""}${(t2.principles[sp.id] || []).length ? `<br><i>원칙: ${esc((t2.principles[sp.id] || []).map((id) => TASK2.principles.find((p) => p.id === id).name).join(", "))}</i>` : ""}</li>`; }).join("");
   return `
     <div class="tp-sec"><h4>확인한 고객 문의 <small>${t1.inquiriesOpened.length}/23</small></h4><ul class="tp-list">${inq || "<li>없음</li>"}</ul></div>
     <div class="tp-sec"><h4>이상 현상 기록 <small>${t1.reproduced.length}건</small></h4><ul class="tp-list">${recs || "<li>없음</li>"}</ul></div>
@@ -235,7 +235,7 @@ function tpAnswers() {
     <div class="tp-sec">
       <h4>TASK-002 · 검수 정답</h4>
       <p>${esc(TASK2_ANSWERS.teacherNotes.issues)}</p>
-      <ul class="tp-notes">${TASK2.spots.map((x) => spotInfo(x.id)).map((sp) => `<li><b>${esc(sp.label)}</b> — ${sp.issue ? `사용성 문제 (${(sp.principles || []).map((id) => TASK2.principles.find((p) => p.id === id).name).join(", ")})` : "단순 시각 차이"}<br><small>${esc(sp.explain || "")}</small></li>`).join("")}</ul>
+      <ul class="tp-notes">${TASK2.spots.map((x) => spotInfo(x.id, true)).map((sp) => `<li><b>${esc(sp.label)}</b> — ${sp.issue ? `사용성 문제 (${(sp.principles || []).map((id) => TASK2.principles.find((p) => p.id === id).name).join(", ")})` : "단순 시각 차이"}<br><small>${esc(sp.explain || "")}</small></li>`).join("")}</ul>
       <p><b>권장 수정:</b> ${esc(TASK2_ANSWERS.teacherNotes.recommended)}</p>
       <p><b>남겨야 할 오류:</b> ${esc(TASK2_ANSWERS.teacherNotes.remaining)}</p>
       <p><b>제출 조건:</b> 발견 1건↑ · 원칙 분석 확인 · 디자인 적용 · 문제/원칙 선택 · 기대 효과/개발 확인 작성 → 교사 승인으로 완료</p>
@@ -290,7 +290,7 @@ teacherRoot.addEventListener("click", (e) => {
   if (a === "complete5") { forceCompleteTask(5); }
   if (a === "complete6") { forceCompleteTask(6); if (!G.state.followup9.started) startFollowup9(); }
   if (a === "release") { startOfficialRelease(G.state.task6.release.build); }
-  if (a === "reveal") { s.task2.findingsRevealed = true; G.save(); if (s.currentApp === "design") renderDesign(); }
+  if (a === "reveal") { s.task2.answersOpen = true; s.task2.findingsRevealed = true; G.save(); if (s.currentApp === "design") renderDesign(); toast({ title: "DAYEON DESIGN", sub: "TASK-002 해설", text: "검수 결과·원칙 분석 결과·수정 선택지 평가가 공개되었습니다." }); }
   if (a === "checkP") { s.task2.principlesChecked = true; G.save(); if (s.currentApp === "design") renderDesign(); }
   if (a === "repro3") { if (typeof startFollowup3 === "function") { showApp("work"); openRoom("ticketon"); startFollowup3(); } }
   if (a === "restart2") {

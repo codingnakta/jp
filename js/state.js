@@ -80,7 +80,7 @@ function defaultState() {
       viewerOpened: false,      // 디자인 검수 뷰어 열람
       guideOpened: false,       // UI/UX 가이드 열람
       findings: [],             // 발견한 차이 [{id, spotId, page, note, time}]
-      findingsRevealed: false,  // 검수 결과 확인(해설 공개)
+      findingsRevealed: false, findingsDone: false, answersOpen: false,  // 검수 결과 확인(해설 공개)
       principles: {},           // { spotId: ["contrast", ...] } 원칙 연결
       principlesChecked: false, // 원칙 분석 정답 확인
       design: null,             // 수정 옵션 선택 { btnStyle, contrast, ... }
@@ -282,13 +282,14 @@ window.addEventListener("beforeunload", () => G.saveNow());
 
 // ---------- 정답·해설 접근 (비공개 데이터) ----------
 // 솔로/교사 환경에서는 private/data-private.js 의 TASK2_ANSWERS 를, 라이브 모드에서는 교사가 공개한 이벤트로 받은 G.state.answers 를 사용
-function answerKey() {
-  if (typeof TASK2_ANSWERS !== "undefined") return TASK2_ANSWERS;
+function answerKey(force = false) {
+  // 솔로: 교사 패널에서 '해설·정답 공개'를 누르기 전까지 학생 화면에는 정답이 없음 (force 는 교사 패널·교사 진행용)
+  if (typeof TASK2_ANSWERS !== "undefined") return force || (G.state.task2 && G.state.task2.answersOpen) ? TASK2_ANSWERS : null;
   return (G.state.answers && G.state.answers.task2) || null;
 }
-function spotInfo(id) {
+function spotInfo(id, force = false) {
   const sp = TASK2.spots.find((x) => x.id === id) || { id, label: id, page: "" };
-  const ak = answerKey();
+  const ak = answerKey(force);
   return { ...sp, ...((ak && ak.spots && ak.spots[id]) || {}) };
 }
 function choiceInfo(optId, choiceId) {

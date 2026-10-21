@@ -147,12 +147,13 @@ function reviewTabHTML() {
     ? `<div class="d-compare"><div><div class="d-cap">v2 기존 (운영 화면)</div>${previewHTML(TASK2.v2, dv.page, opts)}</div><div><div class="d-cap">v4 최종 시안</div>${previewHTML(TASK2.v4, dv.page, opts)}</div></div>`
     : `<div class="d-single"><div class="d-cap">${dv.version === "v2" ? "v2 기존 (운영 화면)" : "v4 최종 시안"} · ${TASK2.pages.find((p) => p.id === dv.page).label}</div>${previewHTML(TASK2[dv.version], dv.page, opts)}</div>`;
 
+  const revealed = !!answerKey() && (s.findingsDone || s.findingsRevealed);   // 교사가 정답을 공개한 뒤에만 결과 표시
   const list = s.findings.map((f, i) => {
     const sp = spotInfo(f.spotId);
     const pg = TASK2.pages.find((p) => p.id === f.page);
     let status = `<span class="d-st wait">검토 중</span>`;
     let explain = "";
-    if (s.findingsRevealed && sp.issue !== undefined) {
+    if (revealed && sp.issue !== undefined) {
       status = sp.issue ? `<span class="d-st bad">사용성 문제</span>` : `<span class="d-st ok">단순 시각 차이</span>`;
       explain = `<div class="d-explain">${esc(sp.explain)}</div>`;
     }
@@ -164,7 +165,7 @@ function reviewTabHTML() {
     </li>`;
   }).join("");
 
-  const missed = s.findingsRevealed && answerKey()
+  const missed = revealed
     ? TASK2.spots.map((x) => spotInfo(x.id)).filter((x) => x.issue && !s.findings.some((f) => f.spotId === x.id))
     : [];
 
@@ -176,11 +177,11 @@ function reviewTabHTML() {
       <ol class="d-finds">${list || `<li class="d-empty">아직 담은 항목이 없습니다.</li>`}</ol>
       ${missed.length ? `<div class="d-missed"><b>검수에서 놓친 항목</b><ul>${missed.map((m) => `<li>${esc(m.label)} — ${esc(m.explain)}</li>`).join("")}</ul></div>` : ""}
       <div class="d-right-foot">
-        ${s.findingsRevealed
-          ? `<div class="d-done">검수 결과가 공개되었습니다. 다음은 <b>원칙 분석</b> 탭입니다.</div><button class="d-cta" data-dtab="principles">원칙 분석으로</button>`
-          : answerKey()
-            ? `<button class="d-cta secondary" data-d="reveal" ${s.findings.length ? "" : "disabled"}>검수 결과 확인</button><p class="d-tip">충분히 조사한 뒤 교사가 누릅니다. 문제별 해설이 공개됩니다.</p>`
-            : `<button class="d-cta secondary" disabled>검수 결과 확인</button><p class="d-tip">교사가 해설을 공개하면 이 버튼이 활성화됩니다. 그 전까지 목록을 채우고 메모를 적어 두세요.</p>`}
+        ${revealed
+          ? `<div class="d-done">검수 결과가 공개되었습니다. 놓친 항목과 해설을 확인하세요.</div><button class="d-cta" data-dtab="principles">원칙 분석으로</button>`
+          : s.findingsDone
+            ? `<div class="d-done">검수 목록을 확정했습니다. 결과·해설은 교사가 공개할 때 표시됩니다.</div><button class="d-cta" data-dtab="principles">원칙 분석으로</button><button class="d-cta secondary" data-d="reopen">목록 다시 열기</button>`
+            : `<button class="d-cta" data-d="reveal" ${s.findings.length ? "" : "disabled"}>검수 완료</button><p class="d-tip">문제라고 생각하는 요소를 모두 담고 메모를 적은 뒤 누르세요. 정답은 교사 해설 때 확인합니다.</p>`}
       </div>
     </aside>`;
 }
@@ -193,10 +194,11 @@ function principlesTabHTML() {
   const items = s.findings.map((f) => spotInfo(f.spotId));
   const uniq = [...new Map(items.map((sp) => [sp.id, sp])).values()];
   const checked = s.principlesChecked;
+  const showResult = checked && !!answerKey();
   const cards = uniq.map((sp) => {
     const sel = s.principles[sp.id] || [];
     let result = "";
-    if (checked && sp.issue !== undefined) {
+    if (showResult && sp.issue !== undefined) {
       if (!sp.issue) result = `<div class="d-result neutral"><b>참고</b> 이 항목은 사용성 문제가 아닌 단순 시각 차이입니다. 원칙 위반으로 보기 어렵습니다.</div>`;
       else {
         const hit = sel.filter((p) => sp.principles.includes(p));
@@ -227,11 +229,11 @@ function principlesTabHTML() {
       <div class="d-right-head"><h3>분석 현황</h3><span>${uniq.filter((sp) => (s.principles[sp.id] || []).length).length}/${uniq.length}</span></div>
       <p class="d-tip">모든 항목에 원칙을 고른 뒤 결과를 확인하세요. 맞고 틀림보다 '왜 그 원칙인지'를 함께 이야기해 보세요.</p>
       <div class="d-right-foot">
-        ${checked
+        ${showResult
           ? `<div class="d-done">분석 결과가 공개되었습니다. 다음은 <b>디자인 수정</b> 탭입니다.</div><button class="d-cta" data-dtab="edit">디자인 수정으로</button>`
-          : answerKey()
-            ? `<button class="d-cta secondary" data-d="checkPrinciples" ${uniq.length && uniq.every((sp) => (s.principles[sp.id] || []).length) ? "" : "disabled"}>분석 결과 확인</button>`
-            : `<button class="d-cta secondary" disabled>분석 결과 확인</button><p class="d-tip">교사가 해설을 공개하면 결과를 확인할 수 있습니다. 먼저 모든 항목에 원칙을 골라 두세요.</p>`}
+          : checked
+            ? `<div class="d-done">원칙 분석을 확정했습니다. 결과·해설은 교사가 공개할 때 표시됩니다.</div><button class="d-cta" data-dtab="edit">디자인 수정으로</button><button class="d-cta secondary" data-d="reopenPrinciples">다시 고르기</button>`
+            : `<button class="d-cta" data-d="checkPrinciples" ${uniq.length && uniq.every((sp) => (s.principles[sp.id] || []).length) ? "" : "disabled"}>분석 완료</button><p class="d-tip">모든 항목에 원칙을 1개 이상 고르면 활성화됩니다. 정답은 교사 해설 때 확인합니다.</p>`}
       </div>
     </aside>`;
 }
@@ -338,7 +340,7 @@ designAppEl.addEventListener("click", (e) => {
     const page = dv.page;
     const exist = s.findings.find((f) => f.spotId === id);
     if (exist) { dLocal.hl = exist.id; toast({ title: "DAYEON DESIGN", sub: "검수", text: `'${sp.label}'은(는) 이미 검수 목록에 있습니다.` }); renderDesign(); return; }
-    if (s.findingsRevealed) { toast({ title: "DAYEON DESIGN", sub: "검수", text: "검수 결과가 공개된 뒤에는 항목을 추가할 수 없습니다." }); return; }
+    if (s.findingsDone) { toast({ title: "DAYEON DESIGN", sub: "검수", text: "검수 목록을 확정한 상태입니다. 바꾸려면 '목록 다시 열기'를 누르세요." }); return; }
     const f = { id: "f-" + Date.now(), spotId: id, page, note: "", time: fmtMinutes(nowMinutes()) };
     s.findings.push(f);
     dLocal.hl = f.id;
@@ -348,15 +350,19 @@ designAppEl.addEventListener("click", (e) => {
   }
   const del = t("[data-find-del]");
   if (del) {
-    if (s.findingsRevealed) return;
+    if (s.findingsDone) return;
     s.findings = s.findings.filter((f) => f.id !== del.dataset.findDel);
     G.save(); renderDesign(); return;
   }
   if (t("[data-d='reveal']")) {
     if (!s.findings.length) return;
-    s.findingsRevealed = true; G.save(); renderDesign();
-    toast({ title: "DAYEON DESIGN", sub: "검수 결과", text: "문제별 해설이 공개되었습니다. 놓친 항목도 함께 확인하세요." });
+    s.findingsDone = true; G.save(); renderDesign();
+    toast({ title: "DAYEON DESIGN", sub: "검수 완료", text: "검수 목록을 확정했습니다. 다음은 원칙 분석 탭입니다. 결과·해설은 교사가 공개하면 표시됩니다." });
     return;
+  }
+  if (t("[data-d='reopen']")) {
+    if (answerKey()) return;
+    s.findingsDone = false; G.save(); renderDesign(); return;
   }
 
   // 원칙 분석
@@ -369,8 +375,12 @@ designAppEl.addEventListener("click", (e) => {
   }
   if (t("[data-d='checkPrinciples']")) {
     s.principlesChecked = true; G.save(); renderDesign();
-    toast({ title: "DAYEON DESIGN", sub: "원칙 분석", text: "분석 결과와 해설이 공개되었습니다." });
+    toast({ title: "DAYEON DESIGN", sub: "원칙 분석", text: answerKey() ? "분석 결과와 해설이 공개되었습니다." : "원칙 분석을 확정했습니다. 다음은 디자인 수정 탭입니다." });
     return;
+  }
+  if (t("[data-d='reopenPrinciples']")) {
+    if (answerKey()) return;
+    s.principlesChecked = false; G.save(); renderDesign(); return;
   }
 
   // 디자인 수정 적용

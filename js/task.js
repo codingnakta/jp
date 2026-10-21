@@ -646,7 +646,7 @@ function validateReport2(r) {
   const s = TS(2);
   const p = [];
   if (!s.findings.length) p.push({ where: "MISSION A", msg: "디자인 검수에서 문제라고 생각하는 요소를 1개 이상 찾으세요." });
-  if (!s.principlesChecked) p.push({ where: "MISSION B", msg: "원칙 분석에서 '분석 결과 확인'까지 진행하세요." });
+  if (!s.principlesChecked) p.push({ where: "MISSION B", msg: "원칙 분석에서 모든 항목에 원칙을 고르고 '분석 완료'를 누르세요." });
   if (!s.designApplied) p.push({ where: "MISSION C", msg: "디자인 수정 옵션을 모두 검토하고 TICKET ON에 적용하세요." });
   if (!(r.problems || []).length && !r.problemsEtc) p.push({ where: "①", msg: "발견한 문제를 1개 이상 선택하거나 입력하세요." });
   if (!(r.principles || []).length) p.push({ where: "②", msg: "관련 원칙을 1개 이상 선택하세요." });
@@ -961,13 +961,13 @@ function forceCompleteTask(no = 1) {
     }
   } else if (no === 2) {
     G.state.task2.assigned = true;
-    if (!s.findings.length) s.findings = TASK2.spots.map((x) => spotInfo(x.id)).filter((x) => x.issue).map((x) => ({ id: "f-" + x.id, spotId: x.id, page: x.page, note: "(교사 진행)", time: fmtMinutes(nowMinutes()) }));
-    s.findingsRevealed = true;
+    if (!s.findings.length) s.findings = TASK2.spots.map((x) => spotInfo(x.id, true)).filter((x) => x.issue).map((x) => ({ id: "f-" + x.id, spotId: x.id, page: x.page, note: "(교사 진행)", time: fmtMinutes(nowMinutes()) }));
+    s.findingsRevealed = true; s.findingsDone = true;
     s.principlesChecked = true;
     if (!s.design) s.design = { ...TASK2.v4 };
     if (!s.designApplied) { G.state.ticketDesign = { ...s.design }; s.designApplied = true; }
     if (!s.reportSubmitted) {
-      s.report = { problems: TASK2.spots.map((x) => spotInfo(x.id)).filter((x) => x.issue).map((x) => x.id), problemsEtc: "", principles: TASK2.principles.map((p) => p.id), improvements: "(교사 진행)", expected: "주요 버튼을 바로 찾고 좌석 상태를 색 없이도 구별", devChecks: "결제하기 버튼 무응답, 결제 결과 불일치", submittedAt: fmtMinutes(nowMinutes()) };
+      s.report = { problems: TASK2.spots.map((x) => spotInfo(x.id, true)).filter((x) => x.issue).map((x) => x.id), problemsEtc: "", principles: TASK2.principles.map((p) => p.id), improvements: "(교사 진행)", expected: "주요 버튼을 바로 찾고 좌석 상태를 색 없이도 구별", devChecks: "결제하기 버튼 무응답, 결제 결과 불일치", submittedAt: fmtMinutes(nowMinutes()) };
       s.reportDraft = s.report; s.reportSubmitted = true;
     }
   }
