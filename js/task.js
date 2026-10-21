@@ -290,7 +290,7 @@ function renderTaskDetail(t) {
       <div class="t-progress-head"><h3>결제 오류 대응 현황</h3><span>${doneN}/6 완료</span></div>
       <ol class="t-steps">
         ${stepLI("A", p.a, true, "MISSION A · 결제 오류 재현",
-            `TICKET ON 결제 확인 화면에서 시나리오 A·B·C로 테스트 결제를 진행하고 '오류 재현 기록'에 동작·현상·예상·증거를 적습니다. <em>기록 ${s.reproductions.length}건 · 요청 ${s.requests.length}건</em>`,
+            `TICKET ON 결제 확인 화면 옆 '테스트 시나리오'에서 A·B·C를 하나씩 골라 결제하고, 관찰 결과를 '오류 재현 기록'으로 남깁니다. <em>시나리오 ${["A", "B", "C"].map((k) => k + (((s.runs || {})[k] || []).some((r) => r.done) ? " ✓" : " ·")).join("  ")} · 기록 ${s.reproductions.length}건</em>`,
             `<span class="t-btns"><button class="btn ${p.a ? "" : "primary"}" data-open-pay-ticket>TICKET ON 결제 테스트</button>${s.reproductions.length ? `<button class="btn" data-open-records>기록 보기</button>` : ""}</span>`)}
         ${stepLI("B", p.b, p.a, "MISSION B · 결제 요청 로그 조사",
             `개발자 도구의 payment_network.log 에서 요청·응답을 비교하고, 반복된 요청과 실제 결과를 조사 기록에 담습니다. <em>단서 ${s.clues.length}건</em>`,

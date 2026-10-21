@@ -97,3 +97,39 @@
   .nt { grid-template-columns: 1fr; grid-template-rows: minmax(0, 45%) minmax(0, 1fr); }
   .nt-list { border-right: 0; border-bottom: 1px solid #3c3c3c; }
 }
+
+/* ---- TASK-004 테스트 시나리오 패널 (결제 확인 옆) ---- */
+.tk-co-side { width: 300px; flex: none; display: flex; flex-direction: column; gap: 14px; }
+.tk-co-side .tk-book { position: static; width: auto; }
+.tt-scn-panel { background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 14px; font-size: 13px; }
+.tt-scn-title { font-weight: 800; font-size: 14px; display: flex; align-items: baseline; gap: 8px; }
+.tt-scn-title small { color: #94a3b8; font-weight: 400; font-size: 11px; }
+.tt-scn-help { color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 6px 0 10px; }
+.tt-scn-card { border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; background: #111c33; }
+.tt-scn-card:hover { border-color: #64748b; }
+.tt-scn-card.on { border-color: #3b82f6; background: #0b1a3a; box-shadow: 0 0 0 2px rgba(59,130,246,.25); cursor: default; }
+.tt-scn-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tt-scn-head b { width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; color: #fff; display: grid; place-items: center; font-size: 12px; flex-shrink: 0; }
+.tt-scn-name { font-weight: 700; color: #fff; }
+.tt-scn-st { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #334155; color: #cbd5e1; white-space: nowrap; }
+.tt-scn-st.ok { background: #14532d; color: #bbf7d0; } .tt-scn-st.bad { background: #7f1d1d; color: #fecaca; } .tt-scn-st.run { background: #78350f; color: #fde68a; }
+.tt-scn-desc { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: #cbd5e1; display: flex; gap: 8px; }
+.tt-scn-desc span { flex-shrink: 0; width: 44px; color: #94a3b8; font-size: 11px; padding-top: 1px; }
+.tt-scn-obs { margin-top: 10px; border-top: 1px dashed #334155; padding-top: 8px; }
+.tt-scn-obs-h { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; color: #fff; margin-bottom: 6px; }
+.tt-scn-obs-h small { color: #94a3b8; font-weight: 400; } .tt-scn-obs-h button { margin-left: auto; }
+.tt-scn-obs ol, .tt-scn-obslist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.tt-scn-obs li, .tt-scn-obslist li { display: flex; gap: 8px; font-size: 12px; line-height: 1.45; padding: 4px 6px; border-radius: 6px; background: rgba(255,255,255,.04); }
+.tt-scn-obs li span, .tt-scn-obslist li span { color: #64748b; flex-shrink: 0; width: 34px; font-variant-numeric: tabular-nums; }
+.tt-scn-obs li.ok, .tt-scn-obslist li.ok { color: #bbf7d0; } .tt-scn-obs li.bad, .tt-scn-obslist li.bad { color: #fecaca; background: rgba(127,29,29,.35); }
+.tt-scn-obs li.warn, .tt-scn-obslist li.warn { color: #fde68a; } .tt-scn-obs li.note, .tt-scn-obslist li.note { color: #a5b4fc; }
+.tt-scn-obs .dim { color: #94a3b8; font-size: 12px; margin: 0; }
+.tt-scn-obs .tt-btn { margin-top: 8px; }
+.tt-btn.small { height: 26px; font-size: 11px; padding: 0 10px; }
+.tt-scn-result { background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; }
+.tt-scn-result-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tt-scn-result-top b { color: #fff; }
+.tt-scn-cmp { display: inline-flex; flex-direction: column; background: rgba(255,255,255,.06); border-radius: 8px; padding: 4px 10px; font-weight: 700; }
+.tt-scn-cmp em { font-style: normal; font-size: 10px; color: #94a3b8; font-weight: 400; }
+.tt-scn-result .tt-scn-obslist { margin-top: 10px; }
+.tk-wrap.is-mobile .tk-co-side { width: 100%; }

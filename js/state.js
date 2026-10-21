@@ -207,6 +207,7 @@ function migrate(st) {
   if (!st.task3.retest) st.task3.retest = { count: 0, passes: 0 };
   if (!st.task4.review) st.task4.review = { status: "none", note: "" };
   if (!Array.isArray(st.task4.requests)) st.task4.requests = [];
+  if (!st.task4.runs) st.task4.runs = {};
   if (!st.task5.review) st.task5.review = { status: "none", note: "" };
   if (!st.task5.timeline) st.task5.timeline = { order: null, attempts: 0, passed: false, lastResult: null, checkedAt: null };
   if (!st.task6.review) st.task6.review = { status: "none", note: "" };

@@ -103,7 +103,6 @@ function testBarHTML(screen) {
   return `<div class="tt-bar">
     <span class="tt-badge">테스트 모드</span>
     <span class="tt-title">DAYEON TASK · ${recordTaskNo() === 4 ? "TASK-004 · 결제 오류 재현·검증" : recordTaskNo() === 3 ? "TASK-003 · 오류 재현·재테스트" : "TASK-001 · 서비스 오류 재현"}</span>
-    ${typeof payMode === "function" && payMode() !== "legacy" ? `<span class="tt-scn">시나리오 <select data-tt-scn>${TASK4.scenarios.map((sc) => `<option value="${sc.id}" ${(TU().scenario || "A") === sc.id ? "selected" : ""}>${sc.id} · ${esc(sc.name)}</option>`).join("")}</select></span>` : ""}
     <span class="tt-screen">현재 화면: <b>${SCREEN_LABEL[screen]}</b></span>
     <div class="tt-actions">
       <button class="tt-btn primary ${ttLocal.recOpen ? "on" : ""}" data-tt="records">${recordTaskNo() >= 3 ? "오류 재현 기록" : "이상 현상 기록"} <b>${recList().length}</b></button>
@@ -284,7 +283,7 @@ function checkoutHTML() {
         <div class="tk-form"><label>카드사<select><option>다연카드</option><option>국민</option><option>신한</option><option>현대</option></select></label><label>할부<select><option>일시불</option><option>2개월</option><option>3개월</option></select></label></div>
       </section>
     </div>
-    <aside class="tk-book">
+    <div class="tk-co-side"><aside class="tk-book">
       <div class="tk-book-title">결제 금액</div>
       <div class="tk-sum"><span>티켓 금액</span><b>${won(ticketSum)}</b></div>
       <div class="tk-sum"><span>예매 수수료</span><b>${won(fee)}</b></div>
@@ -293,7 +292,7 @@ function checkoutHTML() {
       ${ttLocal.err ? `<div class="tk-err">${ttLocal.err}</div>` : ""}
       <button class="tk-primary tk-paybtn ${btnCls}" data-pay ${btnAttr}>${btnText}</button>${sent}
       <button class="tk-ghost" data-go="seats">이전</button>
-    </aside>
+    </aside>${typeof scenarioActive === "function" && scenarioActive() ? scenarioPanelHTML() : ""}</div>
   </div>`;
 }
 
@@ -380,10 +379,10 @@ function recordModal3HTML(screen, rec, scr) {
     <div class="tt-modal wide">
       <h3>오류 재현 기록 <small>${rec ? "수정" : "새 기록"} · TASK-00${recordTaskNo()}</small></h3>
       <div class="tt-field"><label>① 테스트한 페이지</label><div class="tt-static"><b>${SCREEN_LABEL[scr]}</b> · ${rec ? esc(rec.time) : fmtMinutes(nowMinutes())} <span class="tt-auto">자동 입력</span></div></div>
-      <div class="tt-field"><label>② 수행한 동작</label><textarea id="tt-action" rows="2" placeholder="무엇을 어떤 순서로 눌렀나요?">${rec ? esc(rec.action || "") : ""}</textarea></div>
-      <div class="tt-field"><label>③ 실제 발생한 현상</label><textarea id="tt-found" rows="3" placeholder="화면에서 실제로 무엇이 일어났나요? (또는 일어나지 않았나요?)">${rec ? esc(rec.found) : ""}</textarea></div>
+      <div class="tt-field"><label>② 수행한 동작</label><textarea id="tt-action" rows="2" placeholder="무엇을 어떤 순서로 눌렀나요?">${rec ? esc(rec.action || "") : esc((ttLocal.prefill || {}).action || "")}</textarea></div>
+      <div class="tt-field"><label>③ 실제 발생한 현상</label><textarea id="tt-found" rows="3" placeholder="화면에서 실제로 무엇이 일어났나요? (또는 일어나지 않았나요?)">${rec ? esc(rec.found) : esc((ttLocal.prefill || {}).found || "")}</textarea></div>
       <div class="tt-field"><label>④ 예상한 정상 동작</label><textarea id="tt-expected" rows="2" placeholder="원래는 어떻게 동작해야 한다고 생각하나요?">${rec ? esc(rec.expected) : ""}</textarea></div>
-      ${recordTaskNo() === 4 ? `<div class="tt-field"><label>⑤ 관련 증거 <small>요청 번호, 화면, 로그 등</small></label><input id="tt-evidence" type="text" placeholder="예: Request #002, #003 · 결제 결과 화면" value="${rec ? esc(rec.evidence || "") : ""}"></div>` : ""}
+      ${recordTaskNo() === 4 ? `<div class="tt-field"><label>⑤ 관련 증거 <small>요청 번호, 화면, 로그 등</small></label><input id="tt-evidence" type="text" placeholder="예: Request #002, #003 · 결제 결과 화면" value="${rec ? esc(rec.evidence || "") : esc((ttLocal.prefill || {}).evidence || "")}"></div>` : ""}
       <div class="tt-modal-actions">
         ${rec ? `<button class="tt-btn danger-text" data-tt="rec-delete">삭제</button>` : ""}
         <span class="tt-spacer"></span>
@@ -422,7 +421,7 @@ function goScreen(s) {
   G.state.ticketScreen = s;
   ttLocal.err = "";
   if (typeof qa6Event === "function") { if (s === "show") qa6Event("showVisited"); if (s === "mypage" && G.state.ticketOrder && G.state.ticketOrder.serverStatus === "PAID" && G.state.ticketOrder.v4) qa6Event("mypageAfterPaid"); }
-  if (s === "checkout") { ttLocal.attemptKey = "att-" + Date.now().toString(36); ttLocal.inflight = 0; ttLocal.sentCount = 0; ttLocal.processing = false; }
+  if (s === "checkout") { if (typeof scenarioActive === "function" && scenarioActive() && TU().scenario) startRun(TU().scenario); else { ttLocal.attemptKey = "att-" + Date.now().toString(36); ttLocal.inflight = 0; ttLocal.sentCount = 0; ttLocal.processing = false; } }
   G.save();
   renderTicket();
   if (s === "result") logResultFetch();
@@ -446,21 +445,24 @@ function tryPay4() {
   const u = TU();
   const ui = currentPayUi(); const code = currentPayCode();
   if (!u.terms) { ttLocal.err = "구매조건에 동의해 주세요."; ttLog("결제하기 클릭 → 약관 미동의로 차단 (정상)"); renderTicket(); return; }
-  if (!ttLocal.attemptKey) ttLocal.attemptKey = "att-" + Date.now().toString(36);
-  if (ttLocal.inflight > 0 && (code.client || ui.lock !== "none")) { ttLog(`결제하기 클릭 → 처리 중이라 무시 (${code.client ? "isProcessing 가드" : "버튼 비활성화"})`, "note"); if (typeof qa6Event === "function") qa6Event("rapidTested"); return; }
+  if (!u.scenario) { ttLocal.err = "오른쪽 '테스트 시나리오'에서 A·B·C 중 하나를 먼저 고르세요."; renderTicket(); return; }
+  if (!ttLocal.attemptKey) startRun(u.scenario);
+  if (ttLocal.inflight > 0 && (code.client || ui.lock !== "none")) { ttLog(`결제하기 클릭 → 처리 중이라 무시 (${code.client ? "isProcessing 가드" : "버튼 비활성화"})`, "note"); obsClick(ttLocal.attemptKey, false, null, code.client ? "코드의 처리 중 가드가 막음" : "버튼이 비활성화됨"); if (typeof qa6Event === "function") qa6Event("rapidTested"); return; }
   if (ttLocal.inflight > 0 && typeof qa6Event === "function") qa6Event("rapidTested");
-  const scenario = u.scenario || "A";
+  const scenario = u.scenario;
   const t4 = G.state.task4;
   ttLocal.err = ""; ttLocal.inflight = (ttLocal.inflight || 0) + 1; ttLocal.sentCount = (ttLocal.sentCount || 0) + 1; ttLocal.processing = true;
   const attemptKey = ttLocal.attemptKey;
   const idem = code.server ? attemptKey + "-idem" : null;
   ttLog(`결제하기 클릭 → POST /api/payments (시나리오 ${scenario}${idem ? ", idempotencyKey" : ", 키 없음"})`);
+  obsClick(attemptKey, true, (t4.reqSeq || 0) + 1);
   renderTicket();
   PayEngine.send({ scenario, attemptKey, idempotencyKey: idem, orderId: "ORD-" + attemptKey.slice(4).toUpperCase(), amount: seatTotal(), seats: [...u.seats] }).then((res) => {
     ttLocal.inflight = Math.max(0, ttLocal.inflight - 1);
     const req = t4.requests.find((r) => r.no === res.requestNo);
+    obsResponse(attemptKey, { ...res, latency: req ? req.latency : null });
     ttLog(`응답 #${res.requestNo} → ${res.httpStatus === 0 ? "timeout" : res.httpStatus} ${res.status}${res.idempotent ? " (idempotent)" : ""}${res.charged ? " · 청구" : ""}`, res.status === "SUCCESS" ? "info" : res.status === "DECLINED" ? "warn" : res.status === "DUPLICATE" ? "warn" : "error");
-    if (ttLocal.resolvedAttempt === attemptKey) { renderTicket(); return; }   // 첫 응답만 화면에 반영 (나머지는 로그만)
+    if (ttLocal.resolvedAttempt === attemptKey) { if (ttLocal.inflight === 0) obsFinish(attemptKey); renderTicket(); return; }   // 첫 응답만 화면에 반영 (나머지는 로그만)
     ttLocal.resolvedAttempt = attemptKey; ttLocal.processing = false;
     let shown;
     if (!code.branch) shown = "success";
@@ -471,6 +473,7 @@ function tryPay4() {
     const serverStatus = res.status === "SUCCESS" ? "PAID" : res.status === "DECLINED" ? "DECLINED" : "PENDING";
     G.state.ticketOrder = { v4: true, orderNo: "T2510-" + String(1000 + Math.floor(Math.random() * 9000)), seats: [...u.seats], dateIdx: u.dateIdx, total: seatTotal(), serverStatus, shown, reason: res.reason, attemptKey, scenario };
     ttLog(`화면 표시: "${req ? req.shown : shown}" · 실제 결과: ${res.status}`, (shown === "success" && res.status !== "SUCCESS") ? "error" : "info");
+    obsShown(attemptKey, shown, res); if (ttLocal.inflight === 0) obsFinish(attemptKey);
     if (typeof qa6Event === "function") { if (scenario === "C") qa6Event("rapidTested"); if (scenario === "B") qa6Event("failTested"); if (res.status === "DECLINED" && shown === "fail") qa6Event("failShown"); if (res.status === "SUCCESS" && shown === "success") qa6Event("paidOk"); }
     G.save();
     goScreen("result");
@@ -499,7 +502,7 @@ function result4HTML(o) {
   } else {
     body = `<div class="tk-check bad">✖</div><h2>오류가 발생했습니다</h2><p class="tk-help">처리되지 않은 예외 (${esc(o.reason || "UNKNOWN")}). 결제가 됐는지 알 수 없습니다.</p><div class="tk-btns"><button class="tk-ghost" data-go="show">홈으로</button></div>`;
   }
-  return `<div class="tk-result"><div class="tk-crumb">공연 상세 › 좌석 선택 › 결제 확인 › <b>결제 결과</b></div><div class="tk-box center">${body}</div></div>`;
+  return `<div class="tk-result">${typeof resultBannerHTML === "function" ? resultBannerHTML(o) : ""}<div class="tk-crumb">공연 상세 › 좌석 선택 › 결제 확인 › <b>결제 결과</b></div><div class="tk-box center">${body}</div></div>`;
 }
 
 function tryPay() {
@@ -558,7 +561,7 @@ function saveRecord(screen) {
     list.push({ id: "rec-" + Date.now(), screen, screenLabel: SCREEN_LABEL[screen], type, action, found, expected, evidence, time: fmtMinutes(nowMinutes()) });
     ttLog(`${is3 ? "오류 재현" : "이상 현상"} 기록 (${SCREEN_LABEL[screen]}${type ? " · " + type : ""}): ${found.slice(0, 40)}`, "note");
   }
-  ttLocal.modal = false; ttLocal.editId = null;
+  ttLocal.modal = false; ttLocal.editId = null; ttLocal.prefill = null;
   G.save();
   renderTicket();
   toast({ title: "테스트 모드", sub: "이상 현상 기록", text: `기록이 저장되었습니다. (총 ${list.length}건)` });
@@ -567,7 +570,7 @@ function deleteRecord() {
   const list = recList();
   const i = list.findIndex((x) => x.id === ttLocal.editId);
   if (i >= 0) { ttLog(`이상 현상 기록 삭제 (${list[i].screenLabel})`, "note"); list.splice(i, 1); }
-  ttLocal.modal = false; ttLocal.editId = null;
+  ttLocal.modal = false; ttLocal.editId = null; ttLocal.prefill = null;
   G.save();
   renderTicket();
 }
@@ -595,8 +598,8 @@ ticketAppEl.addEventListener("click", (e) => {
     if (a === "log") { ttLocal.logOpen = !ttLocal.logOpen; ttLocal.recOpen = false; renderTicket(); return; }
     if (a === "records") { ttLocal.recOpen = !ttLocal.recOpen; ttLocal.logOpen = false; renderTicket(); return; }
     if (a === "record") { ttLocal.modal = true; ttLocal.editId = null; renderTicket(); return; }
-    if (a === "modal-close") { ttLocal.modal = false; ttLocal.editId = null; renderTicket(); return; }
-    if (a === "modal-bg") { if (e.target === tt) { ttLocal.modal = false; ttLocal.editId = null; renderTicket(); } return; }
+    if (a === "modal-close") { ttLocal.modal = false; ttLocal.editId = null; ttLocal.prefill = null; renderTicket(); return; }
+    if (a === "modal-bg") { if (e.target === tt) { ttLocal.modal = false; ttLocal.editId = null; ttLocal.prefill = null; renderTicket(); } return; }
     if (a === "modal-save") { saveRecord(G.state.ticketScreen || "show"); return; }
     if (a === "rec-delete") { deleteRecord(); return; }
     if (a === "dev") { showApp("dev"); return; }

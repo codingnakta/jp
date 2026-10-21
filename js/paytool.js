@@ -55,7 +55,7 @@ const PayEngine = {
       if (!key && last && Date.now() - last < 500) { latency = 1200; status = 409; result = "DUPLICATE"; reason = "DUPLICATE_REQUEST"; }
       else if (opts.scenario === "B") { latency = 1200; status = 200; result = "DECLINED"; reason = "CARD_DECLINED"; }
       else if (opts.scenario === "T") { latency = 1500; status = 0; result = "TIMEOUT"; reason = "NETWORK_TIMEOUT"; }
-      else { latency = opts.scenario === "A" ? 3000 : 1500; status = 200; result = "SUCCESS"; charged = true; }
+      else { latency = 3000; status = 200; result = "SUCCESS"; charged = true; }
       if (key && result !== "DUPLICATE") eng.byKey[key] = { result, reason };
     }
     eng.lastByAttempt[opts.attemptKey] = Date.now();
