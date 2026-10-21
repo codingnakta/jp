@@ -23,3 +23,4 @@
 .live-ended button { height: 40px; padding: 0 20px; border-radius: 8px; background: #fff; color: #111827; font-weight: 700; }
 /* 라이브 모드에서 업무 단계가 잠긴 안내 */
 .t-locked { margin-top: 24px; padding: 14px 16px; border-radius: 10px; background: #f3f4f6; color: #6b7280; font-size: 14px; }
+.live-badge .leave { color: rgba(255,255,255,.75); text-decoration: underline; pointer-events: auto; margin-left: 4px; }

@@ -15,7 +15,12 @@ async function boot() {
   await Sync.init();
   $s("#mode-note").textContent = SyncUtil.modeLabel();
   Sync.connection.on((on) => { $s("#conn").textContent = on ? "● 연결됨" : "○ 연결 끊김 · 재연결 중"; });
-  const reason = new URLSearchParams(location.search).get("reason");
+  const qs = new URLSearchParams(location.search);
+  if (qs.get("new")) {   // ?new=1 : 이 기기의 기존 수업 연결을 지우고 새 코드로 입장
+    localStorage.removeItem("dayeon-live"); sessionStorage.removeItem("dayeon-live"); sessionStorage.removeItem("dayeon-join");
+    history.replaceState(null, "", location.pathname + (location.search.includes("local=1") ? "?local=1" : ""));
+  }
+  const reason = qs.get("reason");
   if (reason === "membership") showError("팀 정보가 확인되지 않아 다시 입장해야 합니다.");
 
   // 이미 승인된 팀이면 바로 게임으로

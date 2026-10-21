@@ -198,7 +198,7 @@ const Live = {
     const save = { idle: "", saving: "저장 중…", saved: "저장됨", error: "저장 실패 · 재시도 대기" }[Live.saveState];
     const paused = Live.public && Live.public.status === "paused";
     el.className = `live-badge ${online ? "on" : "off"} ${Live.saveState === "error" ? "err" : ""}`;
-    el.innerHTML = `<i></i><b>${esc(Live.teamName || "팀")}</b><span>${online ? "연결됨" : "연결 끊김 · 재연결 중"}</span>${paused ? `<span class="pause">진행 일시정지</span>` : ""}${save ? `<span class="save">${save}</span>` : ""}`;
+    el.innerHTML = `<i></i><b>${esc(Live.teamName || "팀")}</b><span>${online ? "연결됨" : "연결 끊김 · 재연결 중"}</span>${paused ? `<span class="pause">진행 일시정지</span>` : ""}${save ? `<span class="save">${save}</span>` : ""}<a class="leave" href="student.html?new=1" title="이 기기의 수업 연결을 끊고 다른 수업 코드로 입장">다른 수업</a>`;
   },
   showEnded() {
     if (document.getElementById("live-ended")) return;
