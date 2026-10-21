@@ -32,7 +32,7 @@ function reserveWorks() {
     const p = (typeof Live !== "undefined" && Live.public) || {};
     if (p.officialService && p.officialService.reserveFixed) return true;
   } else if (G.state.task3.done) return true;
-  return !!G.state.task3.codeFixed;
+  return !!G.state.task3.codeFixed || (typeof codeResolves3 === "function" && codeResolves3());
 }
 // 현재 이상 현상 기록이 들어갈 업무 (TASK-003 진행 중이면 3, 아니면 1)
 function recordTaskNo() { const t4 = G.state.task4, t3 = G.state.task3; if (t4.started && !t4.done) return 4; return t3.started && !t3.done ? 3 : 1; }
@@ -633,6 +633,7 @@ ticketAppEl.addEventListener("click", (e) => {
       t3.reproAttempts = (t3.reproAttempts || 0) + 1;
       if (t3.started && !t3.done && t3.codeTested) { t3.retest.count++; }
       ttLog("예매하기 클릭 → 반응 없음 (click 이벤트 리스너가 등록되어 있지 않음)", "error");
+      if (t3.started && !t3.done) toast({ title: "TICKET ON", sub: "예매하기 반응 없음", text: t3.codeTested ? "개발자 도구의 코드가 아직 reserveBtn 을 잡지 못합니다. reservation.js 를 다시 고치고 [테스트 실행]으로 확인하세요." : "아직 수정 전입니다. 개발자 도구에서 reservation.js 의 선택자를 고치면 이 버튼에 바로 반영됩니다.", app: "dev" });
       if (typeof qa6Event === "function") qa6Event("reserveFailed");
       G.save();
       renderTicket();

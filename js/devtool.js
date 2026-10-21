@@ -81,6 +81,15 @@ function parseCode(text) {
 function elStr(el) { return `<${el.tag}${el.id ? ` id="${el.id}"` : ""}${el.classes.length ? ` class="${el.classes.join(" ")}"` : ""}>`; }
 
 // ---------- 테스트 실행 ----------
+// 현재 편집 중인 코드가 실제로 reserveBtn 을 잡는지 (테스트 실행 전에도 TICKET ON 에 반영)
+function codeResolves3() {
+  try {
+    const parsed = parseCode(editableText());
+    if (parsed.error || !parsed.declares) return false;
+    const r = resolveSelector(parsed);
+    return !!(r.el && r.kind !== "collection" && r.el.id === TASK3.target);
+  } catch (e) { return false; }
+}
 function runCodeTest() {
   const s = T3();
   const text = editableText();
