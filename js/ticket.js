@@ -95,7 +95,7 @@ function renderTicket() {
     ${ttLocal.modal ? recordModalHTML(screen) : ""}
     ${ttLocal.confirmRestart ? restartModalHTML() : ""}
   `;
-  requestAnimationFrame(() => { const bar = ticketAppEl.querySelector(".tt-bar"); if (bar) ticketAppEl.style.setProperty("--ttbar-h", bar.offsetHeight + "px"); });
+  setTimeout(() => { const bar = ticketAppEl.querySelector(".tt-bar"); if (bar) ticketAppEl.style.setProperty("--ttbar-h", bar.offsetHeight + "px"); }, 0);
 }
 
 function testBarHTML(screen) {
