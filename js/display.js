@@ -10,14 +10,7 @@ const D = { sid: null, pub: null, events: [], teams: {}, lastSeq: 0, overlay: nu
 const PHASE_KO = { LOCKED: "미공개", ANNOUNCED: "업무 배정", ACTIVE: "조사 진행 중", REVIEW: "조사 마감 · 검토", DEBRIEF: "해설 · 발표", COMPLETED: "완료" };
 const APP_KO = { work: "메신저", task: "업무 시스템", ticket: "TICKET ON", design: "디자인 도구", dev: "개발자 도구", ops: "DAYEON DEPLOY" };
 // 업무별 미션 단계 (학생 화면의 MISSION 구성과 동일한 순서)
-const STEPS = {
-  1: [["문의 분석", "고객 문의 23건을 읽고 상황별로 묶기"], ["오류 재현", "TICKET ON에서 직접 재현하고 이상 현상 기록"], ["보고서", "조사 보고서 작성·제출"]],
-  2: [["검수", "운영 화면(v2)과 최종 시안(v4) 비교 · 문제 요소 표시"], ["원칙 분석", "디자인 가이드를 읽고 관련 원칙 고르기"], ["수정안", "디자인 수정안 작성·확정"], ["보고서", "검수 보고서 제출"]],
-  3: [["오류 재현", "예매하기 버튼 오류 재현 기록"], ["조사", "개발자 도구에서 콘솔·HTML·JS 단서 수집"], ["수정·테스트", "reservation.js 수정 후 테스트 실행"], ["재테스트", "TICKET ON에서 2회 확인"], ["보고서", "오류 수정 보고서 제출"]],
-  4: [["A 재현", "시나리오 A/B/C로 결제 오류 재현 기록"], ["B 로그 조사", "요청 로그에서 반복 요청·실제 결과 비교"], ["C UI 개선", "결제 상태별 UI 수정안 적용"], ["D 코드 수정", "payment.js 수정 후 테스트 통과"], ["E QA", "QA 5항목 검증"], ["F 보고서", "업무 보고서 제출"]],
-  5: [["A 공유 폴더", "파일 상세를 열어 이름과 실제 내용 비교 · 이상 기록"], ["B 변경 기록", "디자인 이력 · Git 기록 확인 · 조사 질문 답하기"], ["C 배포 기록", "배포 이력·QA·지난 대화 대조 · 증거 수집"], ["D 타임라인", "사건 순서 재구성 · 검증"], ["E 보고서", "조사 보고서 제출"]],
-  6: [["A 배포 후보", "빌드 4개 비교 · 후보 선택"], ["B 최종 QA", "TICKET ON을 직접 조작해 6항목 검증"], ["C 출시 회의", "출시 승인 여부 합의"], ["D 보고서", "출시 판단 보고서 제출 · 팀장 승인"], ["E 배포", "체크리스트 확인 · 배포 요청"], ["F 운영 확인", "배포 후 운영 상태 확인 보고"]],
-};
+const STEPS = Object.fromEntries(Object.entries(MISSION_STEPS).map(([no, list]) => [no, list.map((x) => [x.label, x.desc])]));
 function parseDue(str) { const m = /(오전|오후)\s*(\d+):(\d+)/.exec(str || ""); if (!m) return null; let h = Number(m[2]) % 12; if (m[1] === "오후") h += 12; return h * 60 + Number(m[3]); }
 
 async function boot() {

@@ -269,14 +269,15 @@ function hideTyping() {
 }
 
 // ---------- 토스트 ----------
-function toast({ uid, title, sub = "", text, room, welcome = false, app = null }) {
+function toast({ uid, title, sub = "", text, room, welcome = false, app = null, onClick = null }) {
   const el = document.createElement("div");
   el.className = "toast" + (welcome ? " welcome" : "");
   el.innerHTML = `${uid ? avatarHTML(uid) : ""}<div class="toast-body">
     <div class="toast-title"><span>${esc(title)}</span><small>${esc(sub)}</small></div>
     <div class="toast-text">${richText(text)}</div></div>`;
   el.addEventListener("click", () => {
-    if (room) { showApp("work"); openRoom(room); }
+    if (onClick) onClick();
+    else if (room) { showApp("work"); openRoom(room); }
     else if (app) { showApp(app); }
     dismiss();
   });
