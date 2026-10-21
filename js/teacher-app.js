@@ -35,13 +35,33 @@ function buildStory() {
     else add("TASK-002 완료 후 · 예매 버튼 이상", { type: "message", room: "ticketon", from: ev.from, text: ev.text });
   });
   FOLLOWUP3.forEach((ev) => add("TASK-003 완료 후 · 결제 테스트", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text }));
-  (typeof FOLLOWUP4 !== "undefined" ? FOLLOWUP4 : []).forEach((ev) => add("결제 중복 사건 · TASK-004 예고", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text }));
+  (typeof FOLLOWUP4 !== "undefined" ? FOLLOWUP4 : []).forEach((ev) => {
+    if (ev.type === "task") add("TASK-004 배정", { type: "task", room: "ticketon", task: ev.task, label: `업무 배정 #${ev.task.no} ${ev.task.title}` });
+    else if (ev.type === "system" && ev.text.includes("배정")) add("TASK-004 배정", { type: "system", room: "ticketon", text: ev.text });
+    else add("결제 대참사 사건", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text });
+  });
+  (typeof FOLLOWUP5 !== "undefined" ? FOLLOWUP5 : []).forEach((ev) => add("TASK-004 엔딩 · 배포 기록 단서", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text }));
+  (typeof FOLLOWUP6 !== "undefined" ? FOLLOWUP6 : []).forEach((ev) => {
+    if (ev.type === "task") add("TASK-005 배정", { type: "task", room: "ticketon", task: ev.task, label: `업무 배정 #${ev.task.no} ${ev.task.title}` });
+    else if (ev.type === "system" && ev.text.includes("배정")) add("TASK-005 배정", { type: "system", room: "ticketon", text: ev.text });
+    else add("TASK-005 사건 · 배포 파일 추궁", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text });
+  });
+  (typeof FOLLOWUP7 !== "undefined" ? FOLLOWUP7 : []).forEach((ev) => add("TASK-005 엔딩 · 사건의 진실", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text }));
+  (typeof FOLLOWUP8 !== "undefined" ? FOLLOWUP8 : []).forEach((ev) => {
+    if (ev.type === "task") add("TASK-006 배정", { type: "task", room: "ticketon", task: ev.task, label: `업무 배정 #${ev.task.no} ${ev.task.title}` });
+    else if (ev.type === "system" && ev.text.includes("배정")) add("TASK-006 배정", { type: "system", room: "ticketon", text: ev.text });
+    else add("TASK-006 사건 · 최후의 배포", ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text });
+  });
+  const simple = (list, chapter) => (typeof list !== "undefined" ? list : []).forEach((ev) => add(chapter, ev.type === "system" ? { type: "system", room: "ticketon", text: ev.text } : { type: "message", room: "ticketon", from: ev.from, text: ev.text }));
+  simple(typeof FOLLOWUP9 !== "undefined" ? FOLLOWUP9 : undefined, "TASK-006 배포 결과 공개");
+  simple(typeof FOLLOWUP10 !== "undefined" ? FOLLOWUP10 : undefined, "근무평가 진행");
+  simple(typeof FOLLOWUP11 !== "undefined" ? FOLLOWUP11 : undefined, "퇴근 승인");
   items.forEach((it, i) => (it.index = i));
   return items;
 }
 let STORY = [];
 let CHAPTERS = [];
-const CONTENT_KEYS = ["TIMELINE", "INCIDENT", "FOLLOWUP", "FOLLOWUP2", "FOLLOWUP3", "FOLLOWUP4", "HINTS", "TEACHER_NOTES", "INQUIRY_GROUPS", "TASK2_ANSWERS", "TASK3_ANSWERS"];
+const CONTENT_KEYS = ["TIMELINE", "INCIDENT", "FOLLOWUP", "FOLLOWUP2", "FOLLOWUP3", "FOLLOWUP4", "HINTS", "TEACHER_NOTES", "INQUIRY_GROUPS", "TASK2_ANSWERS", "TASK3_ANSWERS", "FOLLOWUP5", "TASK4_ANSWERS", "FOLLOWUP6", "FOLLOWUP7", "TASK5_ANSWERS", "FOLLOWUP8", "FOLLOWUP9", "FOLLOWUP10", "FOLLOWUP11", "TASK6_ANSWERS"];
 
 // ---------- 비공개 콘텐츠 (교사 전용 DB 경로 content/private) ----------
 //  1) DB 에 있으면 그것을 사용
@@ -62,8 +82,8 @@ async function loadContent() {
   T.contentReady = false; T.contentError = "";
   try {
     const db = await Sync.db.get("content/private");
-    if (db && db.TIMELINE && db.TASK3_ANSWERS) { applyContent(db); return; }
-    if (db && db.TIMELINE) T.contentError = "등록된 시나리오가 예전 버전입니다(TASK-003 없음). private/data-private.js 를 다시 등록하세요.";
+    if (db && db.TIMELINE && db.TASK6_ANSWERS) { applyContent(db); return; }
+    if (db && db.TIMELINE) T.contentError = "등록된 시나리오가 예전 버전입니다(TASK-006 없음). private/data-private.js 를 다시 등록하세요.";
   } catch (e) { T.contentError = "DB에서 콘텐츠를 읽지 못했습니다: " + (e.code || e.message); }
   // localhost 폴백: 로컬 파일을 읽어 DB에 등록
   try {
@@ -133,8 +153,8 @@ async function createSession(title) {
   const pub = {
     code, title: title || "DAYEON WORK 수업", status: "running", teacherUid: Sync.auth.uid, createdAt: Date.now(),
     gameTime: CLOCK_START_MIN, eventSeq: 0, currentTask: 0,
-    tasks: { t1: { status: "LOCKED" }, t2: { status: "LOCKED" }, t3: { status: "LOCKED" } },
-    officialService: { design: null, source: null, appliedAt: null },
+    tasks: { t1: { status: "LOCKED" }, t2: { status: "LOCKED" }, t3: { status: "LOCKED" }, t4: { status: "LOCKED" }, t5: { status: "LOCKED" }, t6: { status: "LOCKED" } },
+    officialService: { design: null, source: null, appliedAt: null, reserveFixed: false, payFixed: false, payUi: null },
   };
   await Sync.db.set(`sessions/${sid}/public`, pub);
   await Sync.db.set(`sessions/${sid}/private`, { nextIndex: 0, createdAt: Date.now() });
@@ -174,7 +194,7 @@ async function resetSession() {
   await Sync.db.set(sp("members"), null);
   await Sync.db.set(sp("joinRequests"), null);
   await Sync.db.set(sp("private"), { nextIndex: 0, createdAt: Date.now() });
-  await Sync.db.update(sp("public"), { status: "running", gameTime: CLOCK_START_MIN, eventSeq: 0, currentTask: 0, tasks: { t1: { status: "LOCKED" }, t2: { status: "LOCKED" }, t3: { status: "LOCKED" } }, officialService: { design: null, source: null, appliedAt: null } });
+  await Sync.db.update(sp("public"), { status: "running", gameTime: CLOCK_START_MIN, eventSeq: 0, currentTask: 0, tasks: { t1: { status: "LOCKED" }, t2: { status: "LOCKED" }, t3: { status: "LOCKED" }, t4: { status: "LOCKED" }, t5: { status: "LOCKED" }, t6: { status: "LOCKED" } }, officialService: { design: null, source: null, appliedAt: null, reserveFixed: false, payFixed: false, payUi: null }, release: null, eval: null, evalReady: false, leaveApproved: false });
   flash("세션을 초기화했습니다. 학생 팀은 다시 입장 요청해야 합니다.");
 }
 
@@ -230,7 +250,7 @@ async function publishChapter(name) {
 }
 
 // ---------- 수업 진행 가이드 (순서대로 한 단계씩) ----------
-function phaseOf(no) { return T.pub.tasks["t" + no].status; }
+function phaseOf(no) { return ((T.pub.tasks || {})["t" + no] || {}).status || "LOCKED"; }
 function phaseAtLeast(no, p) { return PHASES.indexOf(phaseOf(no)) >= PHASES.indexOf(p); }
 function submissionStats(no) {
   const teams = Object.keys(T.teams);
@@ -244,7 +264,7 @@ function buildGuide() {
   const teamsN = Object.keys(T.teams).length;
   const ch = (name) => ({ done: () => chapterDone(name), ready: () => chapterIsNext(name), action: { label: "공개", fn: () => publishChapter(name) }, count: chapterItems(name).length });
   const goTab = (tab, label) => ({ label, fn: () => { T.tab = tab; render(); } });
-  const s1 = submissionStats(1), s2 = submissionStats(2), s3 = submissionStats(3);
+  const s1 = submissionStats(1), s2 = submissionStats(2), s3 = submissionStats(3), s4 = submissionStats(4), s5 = submissionStats(5);
   return [
     { title: "팀 입장 승인", desc: "학생 팀이 student.html 에서 수업 코드와 팀 이름으로 요청하면 승인합니다. 승인된 팀은 바로 게임 화면으로 들어갑니다. 프로젝터 화면도 지금 띄워 두세요.",
       status: `승인 ${teamsN}팀 · 대기 ${pendingReq}건`, done: () => teamsN > 0 && pendingReq === 0, ready: () => true, action: goTab("teams", pendingReq ? `입장 요청 ${pendingReq}건 승인하기` : "학생 현황 보기"), manualDone: true },
@@ -278,7 +298,24 @@ function buildGuide() {
     { title: "공식 서비스에 수정 반영", desc: "검토가 끝나면 예매하기 버튼 수정을 공식 TICKET ON에 반영합니다. 그 전까지는 각 팀이 자기 테스트 환경에서만 고친 버튼을 볼 수 있습니다.", status: T.pub.officialService && T.pub.officialService.reserveFixed ? "반영됨" : "미반영", done: () => !!(T.pub.officialService && T.pub.officialService.reserveFixed), ready: () => true, action: { label: "예매 버튼 수정 공식 반영", fn: applyOfficialFix } },
     { title: "TASK-003 종료", desc: "업무를 종료 상태로 표시합니다.", status: `단계: ${PHASE_KO[phaseOf(3)]}`, done: () => phaseOf(3) === "COMPLETED", ready: () => phaseAtLeast(3, "ACTIVE"), action: { label: "종료 처리", fn: () => setPhase(3, "COMPLETED") } },
     { title: "완료 후 대화 · 결제 테스트", desc: "'이제 예매 버튼 정상 동작하네요!' → '결제까지 테스트해 볼까요?'. 학생들이 TICKET ON에서 좌석 선택 후 결제 확인에서 결제하기를 눌러 보게 하세요(여전히 무응답, 두 번째 클릭에 중복 요청 409).", ...ch("TASK-003 완료 후 · 결제 테스트") },
-    { title: "결제 중복 사건 · TASK-004 예고", desc: "'결제 요청 중...' → '혹시 결제 버튼 여러 번 누르신 분?' → '동일한 결제 요청이 중복 감지' → TASK-004 결제 대참사 예고.", ...ch("결제 중복 사건 · TASK-004 예고") },
+    { title: "결제 대참사 사건 공개", desc: "'결제 요청 중...' → 한사원 '계속 처리 중이라고만 나오는데요?' → 이대리 '같은 결제 요청이 세 번 들어왔습니다' → '화면에는 결제 완료라고 뜨는데요?' → 김팀장 고객사 전화. 학생들이 TICKET ON에서 결제하기를 눌러 보게 하세요.", ...ch("결제 대참사 사건") },
+    { title: "TASK-004 배정", desc: "긴급 업무 카드 '결제 대참사'가 도착합니다. 학생은 [업무 확인]으로 내용과 첨부(payment.js, 요청 로그, 테스트 케이스, 결제 UI)를 봅니다.", ...ch("TASK-004 배정") },
+    { title: "TASK-004 조사 시작", desc: "학생 흐름: A 결제 오류 재현(시나리오 A/B/C) → B 요청 로그 조사(개발자 도구 Network) → C 결제 UI 수정안(상태별 안내) → D payment.js 수정·테스트(처리 중 가드·멱등성 키·결과 분기) → E QA 5항목 → F 보고서. 약 35~40분. UI만 또는 코드만 고치면 QA가 통과하지 않습니다. 힌트(로그→UX→결과→설계) 순서로 공개하세요.",
+      status: `단계: ${PHASE_KO[phaseOf(4)]}`, done: () => phaseAtLeast(4, "ACTIVE"), ready: () => phaseOf(4) === "ANNOUNCED", action: { label: "조사 시작 열기", fn: () => setPhase(4, "ACTIVE") }, tools: true },
+    { title: "결제 보고서 검토·승인", desc: "팀별 UI 선택·코드 수정 줄·QA 결과(자동 첨부)와 서술 답안(발견 문제·UX 문제·개발 문제·추가 확인)을 보고 승인하거나 보완을 요청합니다.", status: `제출 ${s4.submitted}/${s4.teams}팀 · 승인 ${s4.approved} · 대기 ${s4.pending}`, done: () => s4.submitted > 0 && s4.pending === 0, ready: () => phaseOf(4) === "ACTIVE", action: goTab("review", s4.pending ? `검토 대기 ${s4.pending}건 보기` : "보고서 검토 탭"), manualDone: true },
+    { title: "TASK-004 해설 공개", desc: "원인(클라이언트 가드 없음·서버 멱등성 없음·결과 미분기·상태 안내 없음)과 수정 방법, UI 선택지 평가(권장/주의/비권장)를 모든 팀과 프로젝터에 공개합니다. 학생 결제 UI 편집기에 평가가 표시됩니다.", status: T.events.some((e) => e.type === "debrief" && e.task === 4) ? "공개됨" : "미공개", done: () => T.events.some((e) => e.type === "debrief" && e.task === 4), ready: () => phaseAtLeast(4, "ACTIVE"), action: { label: "해설·평가 공개", fn: () => publishDebrief(4) } },
+    { title: "공식 서비스에 결제 수정 반영", desc: "검토가 끝나면 결제 처리 수정(가드·멱등성·분기)과 권장 결제 UI를 공식 TICKET ON에 반영합니다. 모든 팀의 결제 화면이 정상 동작하게 됩니다.", status: T.pub.officialService && T.pub.officialService.payFixed ? "반영됨" : "미반영", done: () => !!(T.pub.officialService && T.pub.officialService.payFixed), ready: () => true, action: { label: "결제 수정 공식 반영", fn: applyOfficialPayFix } },
+    { title: "TASK-004 종료", desc: "업무를 종료 상태로 표시합니다.", status: `단계: ${PHASE_KO[phaseOf(4)]}`, done: () => phaseOf(4) === "COMPLETED", ready: () => phaseAtLeast(4, "ACTIVE"), action: { label: "종료 처리", fn: () => setPhase(4, "COMPLETED") } },
+    { title: "엔딩 대화 · 배포 기록 단서", desc: "'이제 결제 요청 정상 처리됩니다!' → 이대리 '왜 운영 서버에는 다른 코드가 올라가 있었을까요?' → 한사원 '디자인도 마찬가지였어요' → 시스템 '배포 기록 불일치 발견' → 김팀장 '그거 제가 어제 배포했는데요?' → TASK-005 수상한 배포 기록 예고(미구현).", ...ch("TASK-004 엔딩 · 배포 기록 단서") },
+    { title: "TASK-005 사건 공개 · 배포 파일 추궁", desc: "이대리 '어떤 파일로 배포하셨는지 확인할 수 있을까요?' → 김팀장 '파일 이름에 최종이라고 적혀 있었는데요' → 시스템 '버전 불일치 발견' → '이것도 조사해 주실 수 있을까요?'", ...ch("TASK-005 사건 · 배포 파일 추궁") },
+    { title: "TASK-005 배정", desc: "긴급 조사 업무 카드 '수상한 배포 기록'이 도착합니다. 첨부: 공유 폴더·디자인 이력·Git 기록·배포 이력·QA·지난 대화·가이드.", ...ch("TASK-005 배정") },
+    { title: "TASK-005 조사 시작", desc: "학생 흐름: A 공유 폴더 조사(파일 상세·이상 기록) → B 디자인 이력·Git 기록 + 조사 질문 4개 → C DAYEON DEPLOY 배포 이력·QA·지난 대화 대조, 증거 수집 → D 타임라인 재구성·검증 → E 조사 보고서. 약 20~25분. 힌트(디자인→개발→환경→배포) 순서로 공개하세요.",
+      status: `단계: ${PHASE_KO[phaseOf(5)]}`, done: () => phaseAtLeast(5, "ACTIVE"), ready: () => phaseOf(5) === "ANNOUNCED", action: { label: "조사 시작 열기", fn: () => setPhase(5, "ACTIVE") }, tools: true },
+    { title: "조사 보고서 검토·승인", desc: "팀별 버전 불일치·타임라인(자동)·원인·예방 실패·재발 방지·증거를 보고 승인하거나 보완을 요청합니다. 재발 방지 대책은 여러 합리적 답을 허용하세요.", status: `제출 ${s5.submitted}/${s5.teams}팀 · 승인 ${s5.approved} · 대기 ${s5.pending}`, done: () => s5.submitted > 0 && s5.pending === 0, ready: () => phaseOf(5) === "ACTIVE", action: goTab("review", s5.pending ? `검토 대기 ${s5.pending}건 보기` : "보고서 검토 탭"), manualDone: true },
+    { title: "TASK-005 해설 공개", desc: "디자인 v2/v4 차이, 커밋·빌드 관계, 테스트 빌드와 운영 빌드의 차이, 오래된 빌드가 선택된 경위, 확인 절차 부재를 모든 팀과 프로젝터에 공개합니다.", status: T.events.some((e) => e.type === "debrief" && e.task === 5) ? "공개됨" : "미공개", done: () => T.events.some((e) => e.type === "debrief" && e.task === 5), ready: () => phaseAtLeast(5, "ACTIVE"), action: { label: "해설 공개", fn: () => publishDebrief(5) } },
+    { title: "TASK-005 종료", desc: "업무를 종료 상태로 표시합니다.", status: `단계: ${PHASE_KO[phaseOf(5)]}`, done: () => phaseOf(5) === "COMPLETED", ready: () => phaseAtLeast(5, "ACTIVE"), action: { label: "종료 처리", fn: () => setPhase(5, "COMPLETED") } },
+    { title: "사건의 진실 공개 · TASK-006 예고", desc: "이대리 '...찾았습니다' → 'v1.0.4 vs v1.0.2' → 김팀장 '최종이라고 적힌 폴더에서...' → 시스템 [사고 조사 완료] → '오늘 오후 6시 고객사 시연' → TASK-006 예고.", ...ch("TASK-005 엔딩 · 사건의 진실") },
+    ...(typeof guideSteps6 === "function" ? guideSteps6(ch, goTab) : []),
     { title: "엔딩 공개", desc: "프로젝터에 엔딩 화면이 표시됩니다.", status: T.events.some((e) => e.type === "ending") ? "공개됨" : "미공개", done: () => T.events.some((e) => e.type === "ending"), ready: () => true, action: { label: "엔딩 공개", fn: publishEnding } },
   ];
 }
@@ -340,6 +377,13 @@ async function publishDebrief(no) {
       const text = TASK2_ANSWERS.teacherNotes.issues + "\n\n" + TASK2_ANSWERS.teacherNotes.recommended;
       await publishEvent({ type: "answers", task: 2, answers: { spots: TASK2_ANSWERS.spots, options: TASK2_ANSWERS.options } });
       await publishEvent({ type: "debrief", task: 2, title: "TASK-002 해설", text });
+    } else if (no === 6) {
+      await publishEvent({ type: "debrief", task: 6, title: "TASK-006 학습 정리", text: TASK6_ANSWERS.debrief });
+    } else if (no === 5) {
+      await publishEvent({ type: "debrief", task: 5, title: "TASK-005 해설", text: TASK5_ANSWERS.debrief });
+    } else if (no === 4) {
+      await publishEvent({ type: "answers", task: 4, answers: { ui: TASK4_ANSWERS.ui } });
+      await publishEvent({ type: "debrief", task: 4, title: "TASK-004 해설", text: TASK4_ANSWERS.debrief });
     } else {
       await publishEvent({ type: "debrief", task: 3, title: "TASK-003 해설", text: TASK3_ANSWERS.debrief });
     }
@@ -357,6 +401,11 @@ async function applyOfficial(design, source) {
 async function applyOfficialFix() {
   await Sync.db.update(sp("public"), { "officialService/reserveFixed": true, "officialService/fixedAt": Date.now() });
   await publishEvent({ type: "official", text: "TICKET ON 공식 서비스에 예매하기 버튼 수정(reservation.js 요소 선택자)이 반영되었습니다. 모든 팀의 예매하기 버튼이 정상 동작합니다." });
+}
+const OFFICIAL_PAY_UI = { btnLabel: "amount", processing: "spinner", lock: "disabled", success: "detail", fail: "reasonHelp", retry: "retryHelp", pending: "waitCheck" };
+async function applyOfficialPayFix() {
+  await Sync.db.update(sp("public"), { "officialService/payFixed": true, "officialService/payFixedAt": Date.now(), "officialService/payUi": OFFICIAL_PAY_UI });
+  await publishEvent({ type: "official", text: "TICKET ON 공식 서비스에 결제 처리 수정(처리 중 가드 · 멱등성 키 · 결과 분기)과 결제 상태별 UI가 반영되었습니다. 모든 팀의 결제가 정상 동작합니다." });
 }
 async function publishEnding() {
   if (!confirm("최종 엔딩을 공개할까요?")) return;
@@ -444,13 +493,13 @@ function headerHTML() {
 
 function renderDashboard() {
   if (!T.pub) { app.innerHTML = `<div class="shell">${headerHTML()}<div class="page">불러오는 중…</div></div>`; bindHeader(); return; }
-  const tabs = [["guide", "진행 가이드"], ["story", "스토리 진행"], ["teams", "학생 현황"], ["review", "보고서 검토"], ["notes", "교사용 해설"], ["session", "수업 관리"]];
+  const tabs = [["guide", "진행 가이드"], ["story", "스토리 진행"], ["teams", "학생 현황"], ["review", "보고서 검토"], ["notes", "교사용 해설"], ["eval", "사원평가"], ["session", "수업 관리"]];
   const pendingN = Object.values(T.requests).filter((r) => r.status === "pending").length;
   const reviewN = Object.entries(T.teamData).reduce((n, [tid, d]) => n + [1, 2].filter((no) => d.submissions && d.submissions["t" + no] && (!(d.review && d.review["t" + no]) || d.review["t" + no].status === "pending")).length, 0);
   app.innerHTML = `<div class="shell">
     ${headerHTML()}
     <nav class="tabs">${tabs.map(([k, l]) => `<button class="${T.tab === k ? "on" : ""}" data-tab="${k}">${l}${k === "teams" && pendingN ? `<i>${pendingN}</i>` : ""}${k === "review" && reviewN ? `<i>${reviewN}</i>` : ""}</button>`).join("")}</nav>
-    <div class="page">${({ guide: guideTab, story: storyTab, teams: teamsTab, review: reviewTab, notes: notesTab, session: sessionTab })[T.tab]()}</div>
+    <div class="page">${({ guide: guideTab, story: storyTab, teams: teamsTab, review: reviewTab, notes: notesTab, eval: evalTab, session: sessionTab })[T.tab]()}</div>
   </div>`;
   bindHeader();
   app.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { T.tab = b.dataset.tab; render(); }));
@@ -470,13 +519,13 @@ function storyTab() {
   const chapterN = nextChapterCount();
   const published = T.events.filter((e) => ["message", "system", "task", "invite"].includes(e.type));
   const curTask = T.pub.currentTask || 0;
-  const taskRows = [1, 2, 3].map((no) => {
-    const st = T.pub.tasks["t" + no].status;
+  const taskRows = [1, 2, 3, 4, 5, 6].map((no) => {
+    const st = phaseOf(no);
     return `<div class="task-row"><b>TASK-00${no}</b><span class="phase ${st}">${PHASE_KO[st]}</span>
       <div class="phase-btns">${PHASES.map((p) => `<button data-phase="${no}:${p}" class="${st === p ? "on" : ""}" ${p === "LOCKED" || p === "ANNOUNCED" ? "disabled" : ""}>${PHASE_KO[p]}</button>`).join("")}</div>
       <button data-debrief="${no}" ${st === "LOCKED" ? "disabled" : ""}>해설 공개${no === 2 ? " (+정답)" : ""}</button></div>`;
   }).join("");
-  const hints = [...HINTS.map((h) => ({ ...h, task: "TASK-001" })), ...TASK2_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-002" })), ...TASK3_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-003" }))];
+  const hints = [...HINTS.map((h) => ({ ...h, task: "TASK-001" })), ...TASK2_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-002" })), ...TASK3_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-003" })), ...TASK4_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-004" })), ...TASK5_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-005" })), ...TASK6_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-006" }))];
   const used = (T.priv && T.priv.hints) || {};
   return `
     <div class="cols">
@@ -504,6 +553,9 @@ function storyTab() {
         <h4>공식 수정 (TASK-003)</h4>
         <p class="help">현재: ${T.pub.officialService && T.pub.officialService.reserveFixed ? "예매하기 버튼 수정 반영됨" : "미반영 (팀별 테스트 환경에서만 동작)"}</p>
         <div class="btns"><button data-fix="1" ${T.pub.officialService && T.pub.officialService.reserveFixed ? "disabled" : ""}>예매 버튼 수정 공식 반영</button></div>
+        <h4>공식 수정 (TASK-004)</h4>
+        <p class="help">현재: ${T.pub.officialService && T.pub.officialService.payFixed ? "결제 처리 수정 + 권장 결제 UI 반영됨" : "미반영 (팀별 테스트 환경에서만 동작)"}</p>
+        <div class="btns"><button data-fix="pay" ${T.pub.officialService && T.pub.officialService.payFixed ? "disabled" : ""}>결제 수정 공식 반영</button></div>
         <h4>엔딩</h4>
         <div class="btns"><button data-ending="1">최종 엔딩 공개</button></div>
       </section>
@@ -535,9 +587,9 @@ function teamsTab() {
     </section>
     <section class="card">
       <h3>참가 팀 <small>${teams.length}팀</small></h3>
-      <table class="tbl"><thead><tr><th>팀</th><th>접속</th><th>현재 작업</th><th>TASK-001 조사</th><th>TASK-002 검수</th><th>TASK-003 디버깅</th><th>보고서</th><th></th></tr></thead><tbody>
+      <table class="tbl"><thead><tr><th>팀</th><th>접속</th><th>현재 작업</th><th>TASK-001 조사</th><th>TASK-002 검수</th><th>TASK-003 디버깅</th><th>TASK-004 결제</th><th>TASK-005 조사</th><th>보고서</th><th></th></tr></thead><tbody>
       ${teams.map(([tid, t]) => {
-        const d = T.teamData[tid] || {}; const s = d.state || {}; const t1 = s.task || {}; const t2 = s.task2 || {}; const t3 = s.task3 || {};
+        const d = T.teamData[tid] || {}; const s = d.state || {}; const t1 = s.task || {}; const t2 = s.task2 || {}; const t3 = s.task3 || {}; const t4 = s.task4 || {}; const t5 = s.task5 || {};
         const online = t.online && now - (t.lastSeen || 0) < 60000;
         const app = { work: "메신저", task: "업무 시스템", ticket: "TICKET ON", design: "디자인 검수", dev: "개발자 도구" }[s.currentApp] || "-";
         const rv = (no) => { const r = d.review && d.review["t" + no]; const sub = d.submissions && d.submissions["t" + no]; if (!sub) return "-"; return r ? ({ pending: "검토 대기", approved: "승인", returned: "보완 요청" }[r.status] || r.status) : "검토 대기"; };
@@ -546,15 +598,17 @@ function teamsTab() {
           <td>${t1.started ? `문의 ${(t1.inquiriesOpened || []).length}/23 · 기록 ${(t1.reproduced || []).length}건${t1.ticketVisited ? " · 사이트 방문" : ""}` : "<small>미시작</small>"}</td>
           <td>${t2.started ? `발견 ${(t2.findings || []).length} · 원칙 ${t2.principlesChecked ? "확인" : "-"} · 수정 ${t2.designApplied ? "확정" : "-"}` : "<small>미시작</small>"}</td>
           <td>${t3.started ? `재현 ${(t3.reproductions || []).length} · 단서 ${(t3.clues || []).length} · 테스트 ${t3.codeTested ? (t3.codeFixed ? "<b style='color:#1f8a4c'>통과</b>" : "실패") : "-"} · 재테스트 ${(t3.retest || {}).passes || 0}/2` : "<small>미시작</small>"}</td>
-          <td>T1 ${rv(1)}<br>T2 ${rv(2)}<br>T3 ${rv(3)}</td>
+          <td>${t4.started ? `재현 ${(t4.reproductions || []).length} · 요청 ${(t4.requests || []).length} · UI ${t4.uiApplied ? "<b style='color:#1f8a4c'>적용</b>" : "-"} · 코드 ${t4.codeTested ? (t4.codeOk ? "<b style='color:#1f8a4c'>통과</b>" : "실패") : "-"} · QA ${t4.qa ? `${t4.qa.passed}/${t4.qa.total}` : "-"}` : "<small>미시작</small>"}</td>
+          <td>${t5.started ? `파일 ${(t5.filesViewed || []).length}/${TASK5.files.length} · 기록 ${(t5.fileNotes || []).length} · 증거 ${(t5.evidence || []).length} · 타임라인 ${(t5.timeline || {}).passed ? "<b style='color:#1f8a4c'>통과</b>" : ((t5.timeline || {}).attempts || 0) + "회"}` : "<small>미시작</small>"}</td>
+          <td>T1 ${rv(1)}<br>T2 ${rv(2)}<br>T3 ${rv(3)}<br>T4 ${rv(4)}<br>T5 ${rv(5)}</td>
           <td><button data-team="${tid}">답안 보기</button><button data-remove="${tid}">내보내기</button></td></tr>`;
-      }).join("") || `<tr><td colspan="7" class="empty">아직 승인된 팀이 없습니다.</td></tr>`}
+      }).join("") || `<tr><td colspan="10" class="empty">아직 승인된 팀이 없습니다.</td></tr>`}
       </tbody></table>
     </section>
-    ${T.selectedTeam && T.teams[T.selectedTeam] ? teamDetailHTML(T.selectedTeam) : ""}`.replace('colspan="7"', 'colspan="8"');
+    ${T.selectedTeam && T.teams[T.selectedTeam] ? teamDetailHTML(T.selectedTeam) : ""}`;
 }
 function teamDetailHTML(tid) {
-  const t = T.teams[tid]; const d = T.teamData[tid] || {}; const s = d.state || {}; const t1 = s.task || {}; const t2 = s.task2 || {}; const t3 = s.task3 || {};
+  const t = T.teams[tid]; const d = T.teamData[tid] || {}; const s = d.state || {}; const t1 = s.task || {}; const t2 = s.task2 || {}; const t3 = s.task3 || {}; const t4 = s.task4 || {}; const t5 = s.task5 || {};
   const recs = (t1.reproduced || []).map((r) => `<li><b>${esc(r.screenLabel)}</b> <small>${esc(r.type)} · ${esc(r.time)}</small><br>${esc(r.found)}${r.expected ? `<br><i>기대: ${esc(r.expected)}</i>` : ""}</li>`).join("") || "<li>-</li>";
   const finds = (t2.findings || []).map((f) => { const sp = TASK2.spots.find((x) => x.id === f.spotId) || {}; const a = TASK2_ANSWERS.spots[f.spotId] || {}; return `<li><b>${esc(sp.label || f.spotId)}</b> <small>${a.issue ? "사용성 문제" : "단순 차이"}</small>${f.note ? `<br>${esc(f.note)}` : ""}${(t2.principles && t2.principles[f.spotId] || []).length ? `<br><i>원칙: ${esc((t2.principles[f.spotId] || []).map((id) => (TASK2.principles.find((p) => p.id === id) || {}).name).join(", "))}</i>` : ""}</li>`; }).join("") || "<li>-</li>";
   const design = t2.design ? TASK2.options.map((o) => { const c = o.choices.find((x) => x.id === t2.design[o.id]); const a = c && TASK2_ANSWERS.options[o.id][c.id]; return `<li>${esc(o.title)} → ${c ? `${esc(c.label)} <small>${a ? a.verdict : ""}</small>` : "-"}</li>`; }).join("") : "<li>-</li>";
@@ -568,6 +622,18 @@ function teamDetailHTML(tid) {
         <h4>조사 단서 ${(t3.clues || []).length}건</h4><ul class="list">${(t3.clues || []).map((c) => `<li><small>${esc(c.src)}</small><br><code>${esc(c.text)}</code></li>`).join("") || "<li>-</li>"}</ul></div>
       <div><h4>코드 수정 (reservation.js 1~2행)</h4><pre class="codebox">${esc((t3.fixedCode || (t3.code ? t3.code.split("\n").slice(0, 2).join("\n") : "")) || "(수정 없음)")}</pre>
         <p class="small">테스트: ${t3.codeTested ? (t3.codeFixed ? "통과" : "실패 · " + esc((t3.testResult || {}).summary || "")) : "미실행"}${t3.testRuns ? ` (${t3.testRuns}회)` : ""} · 재테스트 ${(t3.retest || {}).passes || 0}/2${(t3.retest || {}).count > (t3.retest || {}).passes ? ` (실패 ${(t3.retest.count - t3.retest.passes)}회)` : ""}</p></div>
+      <div><h4>TASK-004 · 결제 오류 재현 ${(t4.reproductions || []).length}건</h4><ul class="list">${(t4.reproductions || []).map((r) => `<li><b>${esc(r.screenLabel)}</b> <small>${esc(r.time)}</small><br>동작: ${esc(r.action || "")}<br>현상: ${esc(r.found)}${r.expected ? `<br><i>기대: ${esc(r.expected)}</i>` : ""}${r.evidence ? `<br><small>증거: ${esc(r.evidence)}</small>` : ""}</li>`).join("") || "<li>-</li>"}</ul>
+        <h4>결제 요청 로그 ${(t4.requests || []).length}건</h4><p class="small">${esc((t4.requests || []).map((r) => `#${r.no} ${r.status === 0 ? "T/O" : r.status ?? "…"} ${r.result}${r.charged ? "💳" : ""}`).join(" · ") || "-")}</p>
+        <h4>조사 단서 ${(t4.clues || []).length}건</h4><ul class="list">${(t4.clues || []).map((c) => `<li><small>${esc(c.src)}</small><br><code>${esc(c.text)}</code></li>`).join("") || "<li>-</li>"}</ul></div>
+      <div><h4>결제 UI 선택 ${t4.uiApplied ? "(적용됨)" : "(미적용)"}</h4><ul class="list">${t4.ui ? TASK4.ui.map((o) => { const c = o.choices.find((x) => x.id === t4.ui[o.id]); const a = c && TASK4_ANSWERS.ui[o.id] && TASK4_ANSWERS.ui[o.id][c.id]; return `<li>${esc(o.title)} → ${c ? `${esc(c.label)} <small>${a ? a.verdict : ""}</small>` : "-"}</li>`; }).join("") : "<li>-</li>"}</ul>
+        <h4>payment.js 수정 (handlePayment)</h4><pre class="codebox">${esc(t4.fixedCode || (t4.code ? t4.code.split("\n").slice(TASK4.editableFrom - 1).join("\n") : "") || "(수정 없음)")}</pre>
+        <p class="small">테스트: ${t4.codeTested ? (t4.codeOk ? "통과" : "실패") : "미실행"}${t4.testRuns ? ` (${t4.testRuns}회)` : ""} · 가드 ${(t4.codeFlags || {}).client ? "○" : "×"} · 멱등성 ${(t4.codeFlags || {}).server ? "○" : "×"} · 분기 ${(t4.codeFlags || {}).branch ? "○" : "×"} · 보류 처리 ${(t4.codeFlags || {}).pending ? "○" : "×"}</p>
+        <h4>QA</h4><p class="small">${t4.qa ? t4.qa.tests.map((x) => `${esc(x.name)} ${x.pass ? "PASS" : "FAIL"}`).join(" · ") + ` (${t4.qa.passed}/${t4.qa.total})` : "미실행"}</p></div>
+      <div><h4>TASK-005 · 공유 폴더 조사 기록 ${(t5.fileNotes || []).length}건</h4><ul class="list">${(t5.fileNotes || []).map((n) => `<li><b>${esc(n.file)}</b><br>${esc(n.mismatch)}${n.reason ? `<br><i>${esc(n.reason)}</i>` : ""}</li>`).join("") || "<li>-</li>"}</ul>
+        <h4>조사 질문 답</h4><ul class="list">${TASK5.questionsB.map((q) => `<li><small>${esc(q.title)}</small><br>${esc((t5.answersB || {})[q.id] || "-")}</li>`).join("")}</ul></div>
+      <div><h4>TASK-006 · 최종 배포</h4><p class="small">${(s.task6 || {}).started ? `후보 ${esc(((s.task6 || {}).candidate || {}).id || "-")} · QA ${(s.task6 || {}).qa ? `${s.task6.qa.passed}/${s.task6.qa.total}` : "-"} · 회의 ${((s.task6 || {}).meeting || {}).decision === "approve" ? "승인" : ((s.task6 || {}).meeting || {}).decision === "hold" ? "보류" : "-"} · 배포 요청 ${(s.task6 || {}).release && s.task6.release.requested ? "○" : "-"} · 배포 후 확인 ${(s.task6 || {}).postCheckDone ? "○" : "-"}` : "미시작"}</p></div>
+      <div><h4>확보한 증거 ${(t5.evidence || []).length}건</h4><ul class="list">${(t5.evidence || []).map((e) => `<li><small>${esc(e.src)}</small><br>${esc(e.text)}</li>`).join("") || "<li>-</li>"}</ul>
+        <h4>타임라인</h4><p class="small">${(t5.timeline || {}).order ? (t5.timeline.order.map((id, i) => `${i + 1}. ${(TASK5.timeline.find((x) => x.id === id) || {}).label}`).join(" → ")) : "-"}<br>${(t5.timeline || {}).passed ? "검증 통과" : "미통과"} · 검증 ${(t5.timeline || {}).attempts || 0}회</p></div>
     </div>
   </section>`;
 }
@@ -577,7 +643,7 @@ function reviewTab() {
   const blocks = [];
   Object.entries(T.teams).forEach(([tid, t]) => {
     const d = T.teamData[tid] || {};
-    [1, 2, 3].forEach((no) => {
+    [1, 2, 3, 4, 5, 6].forEach((no) => {
       const sub = d.submissions && d.submissions["t" + no];
       if (!sub) return;
       const rv = (d.review && d.review["t" + no]) || { status: "pending" };
@@ -586,6 +652,18 @@ function reviewTab() {
       if (no === 1) {
         const stg = (r.stages || []).map((id) => (REPORT.stages.find((x) => x.id === id) || {}).label || id).join(", ");
         body = `<p><b>① 문제 발생 단계</b> ${esc(stg || "-")}</p><p><b>② 확인된 주요 문제</b><br>${esc(r.problems || "-")}</p><p><b>③ 판단 근거</b><br>${esc(r.evidence || "-")}</p><p><b>④ 추가 확인 사항</b><br>${esc(r.followup || "-")}</p><p><b>참고 문의</b> ${esc((r.refs || []).join(", ") || "-")}</p>`;
+      } else if (no === 5) {
+        const st5 = (d.state && d.state.task5) || {};
+        const tlTxt = ((st5.timeline || {}).order || []).map((id, i) => `${i + 1}. ${(TASK5.timeline.find((x) => x.id === id) || {}).label}`).join(" → ");
+        const evs = (st5.evidence || []).filter((e) => (r.evidenceIds || []).includes(e.id));
+        body = `<p><b>① 확인된 버전 불일치</b><br>운영: ${esc(r.prod || "-")} / 테스트: ${esc(r.staging || "-")}</p><p><b>② 사건 발생 과정</b><br>${esc(tlTxt || "-")} ${(st5.timeline || {}).passed ? "(검증 통과)" : "(미통과)"}</p><p><b>③ 직접 원인</b><br>${esc(r.cause || "-")}</p><p><b>④ 예방하지 못한 이유</b><br>${esc(r.why || "-")}</p><p><b>⑤ 재발 방지 대책</b><br>${esc(r.prevent || "-")}</p><p><b>⑥ 참고한 증거</b></p><ul class="list">${evs.map((e) => `<li><small>${esc(e.src)}</small> ${esc(e.text)}</li>`).join("") || "<li>-</li>"}</ul>`;
+      } else if (no === 6 && typeof reviewBody6 === "function") {
+        body = reviewBody6(d, r);
+      } else if (no === 4) {
+        const st4 = (d.state && d.state.task4) || {};
+        const uiTxt = st4.uiApplied && st4.ui ? TASK4.ui.map((o) => { const c = o.choices.find((x) => x.id === st4.ui[o.id]); return c ? `${o.title.replace(/^[①-⑩]\s*/, "")}: ${c.label}` : ""; }).filter(Boolean).join(" / ") : "(미적용)";
+        const codeTxt = st4.fixedCode || (st4.code ? st4.code.split("\n").slice(TASK4.editableFrom - 1).join("\n") : "") || "(수정 없음)";
+        body = `<p><b>① 발견한 문제</b><br>${esc(r.problem || "-")}</p><p><b>② UX 측면의 문제</b><br>${esc(r.ux || "-")}</p><p><b>③ 개발 측면의 문제</b><br>${esc(r.dev || "-")}</p><p><b>④ 수정 사항</b><br>UI: ${esc(uiTxt)}<br><code>${esc(codeTxt)}</code>${r.fixNote ? `<br>${esc(r.fixNote)}` : ""}</p><p><b>⑤ 검증 결과</b> ${st4.qa ? st4.qa.tests.map((x) => `${esc(x.name)} ${x.pass ? "PASS" : "FAIL"}`).join(" · ") + ` (${st4.qa.passed}/${st4.qa.total})` : "QA 미실행"} · 코드 테스트 ${st4.codeOk ? "통과" : st4.codeTested ? "실패" : "미실행"}</p><p><b>⑥ 추가 확인 사항</b><br>${esc(r.followup || "-")}</p>`;
       } else if (no === 3) {
         const stg = (r.stages || []).map((id) => (TASK3.report.stages.find((x) => x.id === id) || {}).label || id).join(", ");
         const st3 = (d.state && d.state.task3) || {};
@@ -630,8 +708,29 @@ function notesTab() {
       <p><b>제출 조건:</b> 재현 기록 1건↑ · 개발자 도구 열람 · 코드 테스트 통과 · TICKET ON 재테스트 2회 · ①②③⑥ 작성 · 토론 1개↑ → 교사 승인으로 완료</p>
       <h4>발표용 질문</h4><ul class="list">${TASK3_ANSWERS.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
     </section>
+    <section class="card"><h3>TASK-004 · 정답과 해설</h3>
+      <p><b>원인:</b> ${esc(TASK4_ANSWERS.cause)}</p>
+      <p><b>수정:</b> ${esc(TASK4_ANSWERS.fix)}</p>
+      <p><b>해설:</b> ${esc(TASK4_ANSWERS.debrief).replace(/\n/g, "<br>")}</p>
+      <p><b>다음 단서:</b> ${esc(TASK4_ANSWERS.remaining)}</p>
+      <p><b>제출 조건:</b> 재현 기록 1건↑ · 요청 로그 열람 · UI 수정안 적용 · 코드 테스트 실행 · QA 실행 · ①②③⑥ 작성 → 교사 승인으로 완료. (QA 5항목은 UI와 코드가 모두 고쳐져야 전부 통과)</p>
+      <h4>UI 선택지 평가</h4><ul class="list">${TASK4.ui.map((o) => `<li><b>${esc(o.title)}</b> — ${o.choices.map((c) => { const a = TASK4_ANSWERS.ui[o.id][c.id]; return `${esc(c.label)} <small>(${a ? a.verdict : "?"})</small>`; }).join(" · ")}</li>`).join("")}</ul>
+      <h4>발표용 질문</h4><ul class="list">${TASK4_ANSWERS.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
+    </section>
+    <section class="card"><h3>TASK-005 · 정답과 해설</h3>
+      <p><b>버전:</b> 운영 ${esc(TASK5_ANSWERS.versions.production)} / 테스트 ${esc(TASK5_ANSWERS.versions.staging)}</p>
+      <p><b>타임라인:</b> ${TASK5_ANSWERS.timelineOrder.map((id, i) => `${i + 1}. ${esc((TASK5.timeline.find((x) => x.id === id) || {}).label)}`).join(" → ")}</p>
+      <p><b>조사 질문 답:</b></p><ul class="list">${TASK5.questionsB.map((q) => `<li><small>${esc(q.title)}</small><br>${esc(TASK5_ANSWERS.answersB[q.id])}</li>`).join("")}</ul>
+      <p><b>직접 원인:</b> ${esc(TASK5_ANSWERS.cause)}</p>
+      <p><b>실패한 과정:</b> ${esc(TASK5_ANSWERS.process)}</p>
+      <p><b>재발 방지(예시):</b> ${esc(TASK5_ANSWERS.prevent)}</p>
+      <p><b>해설:</b> ${esc(TASK5_ANSWERS.debrief).replace(/\n/g, "<br>")}</p>
+      <p><b>제출 조건:</b> 공유 폴더 기록 1건↑ · 디자인 이력·Git·배포 로그 열람 · 타임라인 검증 통과 · ①③④⑤ 작성 · 증거 1건↑ 선택 → 교사 승인으로 완료</p>
+      <h4>발표용 질문</h4><ul class="list">${TASK5_ANSWERS.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
+    </section>
+    ${typeof notes6HTML === "function" ? notes6HTML() : ""}
     <section class="card"><h3>다음 사건 (미공개)</h3>
-      <p class="help">TASK-003 완료 후: 예매 버튼은 되지만 결제하기는 '결제 요청 중...'에서 멈추고, 여러 번 누르면 중복 요청(409)이 감지됨 → <b>TASK-004. 결제 대참사</b> (미구현).</p>
+      <p class="help">TASK-004 엔딩 대화에서 '테스트 환경에서는 정상이던 코드가 운영에는 다르게 올라가 있었다'는 단서와 함께 배포 기록 불일치가 드러남 → <b>TASK-005. 수상한 배포 기록</b> (미구현).</p>
     </section>`;
 }
 
@@ -662,7 +761,7 @@ function bindTab() {
   q("[data-pause]").forEach((b) => b.addEventListener("click", () => setSessionStatus(T.pub.status === "paused" ? "running" : "paused")));
   q("[data-phase]").forEach((b) => b.addEventListener("click", () => { const [no, p] = b.dataset.phase.split(":"); setPhase(Number(no), p); }));
   q("[data-debrief]").forEach((b) => b.addEventListener("click", () => publishDebrief(Number(b.dataset.debrief))));
-  q("[data-hint]").forEach((b) => b.addEventListener("click", () => { const h = [...HINTS, ...TASK2_ANSWERS.hints].find((x) => x.id === b.dataset.hint); if (h) publishHint(h); }));
+  q("[data-hint]").forEach((b) => b.addEventListener("click", () => { const h = [...HINTS, ...TASK2_ANSWERS.hints, ...TASK3_ANSWERS.hints, ...TASK4_ANSWERS.hints, ...TASK5_ANSWERS.hints, ...TASK6_ANSWERS.hints].find((x) => x.id === b.dataset.hint); if (h) publishHint(h); }));
   q("[data-official]").forEach((b) => b.addEventListener("click", () => {
     const v = b.dataset.official;
     if (v === "none") applyOfficial(null, "되돌림");
@@ -670,7 +769,7 @@ function bindTab() {
     else { const d = T.teamData[v]; if (d && d.state && d.state.task2 && d.state.task2.design) applyOfficial({ ...d.state.task2.design, poster: TASK2.v4.poster, stage: TASK2.v4.stage, heart: TASK2.v4.heart }, `${T.teams[v].name} 팀 수정안`); }
   }));
   q("[data-ending]").forEach((b) => b.addEventListener("click", publishEnding));
-  q("[data-fix]").forEach((b) => b.addEventListener("click", applyOfficialFix));
+  q("[data-fix]").forEach((b) => b.addEventListener("click", () => (b.dataset.fix === "pay" ? applyOfficialPayFix() : applyOfficialFix())));
   q("[data-approve]").forEach((b) => b.addEventListener("click", () => approve(b.dataset.approve)));
   q("[data-reject]").forEach((b) => b.addEventListener("click", () => reject(b.dataset.reject)));
   q("[data-remove]").forEach((b) => b.addEventListener("click", () => removeTeam(b.dataset.remove)));

@@ -311,3 +311,12 @@ textarea.t-input { resize: vertical; margin-top: 10px; line-height: 1.6; }
 .t-dq { margin-bottom: 12px; }
 .t-dq .t-chip { margin-bottom: 4px; display: inline-block; }
 .t-dq .t-help { margin: 4px 0 6px; color: #374151; font-weight: 600; }
+
+.t-sub { margin: 10px 0 6px; font-size: 13px; color: #6b7280; }
+.tk-check.bad { background: #fee2e2; color: #dc2626; }
+
+.t-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.t-lab { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151; font-weight: 600; }
+.t-lab .t-input { font-weight: 400; }
+.t-help a { color: #1a6cf5; cursor: pointer; text-decoration: underline; }
+.app-dot.ops { background: #2563eb; }

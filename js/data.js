@@ -473,3 +473,345 @@ const TASK3 = {
     ],
   },
 };
+
+// =====================================================================
+//  TASK-004. 결제 대참사 — 중복 결제 요청 및 잘못된 결제 상태 안내 문제 해결
+// =====================================================================
+TASKS.push({
+  no: 4, code: "TASK-004", status: "진행 전",
+  title: "결제 대참사",
+  subtitle: "중복 결제 요청 및 잘못된 결제 상태 안내 문제 해결",
+  owner: "이서연", due: "오후 3:00", from: "김팀장", priority: "긴급", kind: "결제 오류 조사·개선",
+  background: "TICKET ON에서 결제 관련 문제가 발생했습니다. 고객은 결제 버튼을 클릭한 후 진행 상황을 명확하게 알 수 없으며, 같은 결제를 여러 번 요청할 수 있습니다. 일부 결제는 실제로 정상 처리되지 않았지만 웹사이트에서는 완료된 것으로 안내하고 있습니다.",
+  goal: "결제 오류를 직접 재현하고, 실제 요청 기록과 사용자 화면을 비교합니다. 사용자 경험상의 문제를 분석하고 결제 처리 코드를 조사한 뒤, UI와 개발 로직을 모두 개선합니다. 수정 결과를 QA로 검증하고 업무 보고서를 제출합니다.",
+  attachments: [
+    { type: "link", name: "TICKET_ON_결제테스트", meta: "결제 확인 화면 · 시나리오 A/B/C" },
+    { type: "pay", file: "js", name: "payment.js", meta: "결제 처리 코드" },
+    { type: "pay", file: "net", name: "payment_network.log", meta: "요청 및 응답 기록" },
+    { type: "payui", name: "payment_ui.fig", meta: "결제 UI 시안 · 상태별 디자인" },
+    { type: "pay", file: "cases", name: "payment_test_cases.md", meta: "테스트 케이스" },
+    { type: "pay", file: "manual", name: "결제_처리_업무_매뉴얼.pdf", meta: "참고자료" },
+  ],
+});
+
+const TASK4 = {
+  files: [
+    { id: "js", name: "payment.js", lang: "js", label: "결제 처리 코드", editable: true },
+    { id: "net", name: "payment_network.log", lang: "net", label: "요청·응답 기록 (Network)" },
+    { id: "cases", name: "payment_test_cases.md", lang: "doc", label: "테스트 케이스" },
+    { id: "manual", name: "결제_처리_업무_매뉴얼.pdf", lang: "doc", label: "참고자료" },
+  ],
+  // payment.js — 5행부터 끝까지 수정 가능 (handlePayment 와 그 위의 선언)
+  js: [
+    `// 결제 확인 화면 - 결제하기 버튼`,
+    `const payButton = document.getElementById("payBtn");`,
+    ``,
+    `payButton.addEventListener("click", handlePayment);`,
+    ``,
+    `async function handlePayment() {`,
+    `  const result = await requestPayment(order);`,
+    ``,
+    `  showSuccessMessage();`,
+    `}`,
+  ],
+  editableFrom: 5,
+  maxEditLines: 16,
+  // 코드에서 쓸 수 있는 함수/변수 (매뉴얼과 동일)
+  api: [
+    { sig: "requestPayment(order, options?)", desc: "결제 요청을 보내고 결과 객체를 돌려줍니다 (await 필요). options.idempotencyKey 를 넣으면 같은 결제 시도를 서버가 한 번만 처리합니다." },
+    { sig: "result.ok / result.status", desc: "result.ok 는 결제 성공 여부(true/false). result.status 는 \"SUCCESS\" | \"DECLINED\" | \"DUPLICATE\" | \"TIMEOUT\". result.reason 은 실패 사유." },
+    { sig: "createIdempotencyKey(order)", desc: "이번 결제 시도를 나타내는 고유 키를 만듭니다. 같은 시도 안에서는 같은 값을 돌려줍니다." },
+    { sig: "showSuccessMessage(result)", desc: "결제 완료 화면을 보여줍니다." },
+    { sig: "showFailureMessage(result)", desc: "결제 실패 안내와 다시 시도 방법을 보여줍니다." },
+    { sig: "showPendingMessage()", desc: "결과를 확인하는 중이라는 안내를 보여줍니다 (응답 지연·오류)." },
+    { sig: "isProcessing", desc: "처리 중 여부를 담을 수 있는 변수 (직접 선언해서 사용)." },
+  ],
+  cases: [
+    { id: "normal", name: "정상 결제", expect: "완료 안내와 실제 처리 결과가 일치한다" },
+    { id: "rapid", name: "빠른 연속 클릭", expect: "동일 결제 시도가 중복 처리되지 않는다" },
+    { id: "slow", name: "응답 지연", expect: "처리 중 상태가 명확히 표시된다" },
+    { id: "fail", name: "결제 실패", expect: "실패 안내와 적절한 후속 행동을 제공한다" },
+    { id: "mypage", name: "예매 내역 확인", expect: "실제 성공한 예매만 정상 반영된다" },
+  ],
+  scenarios: [
+    { id: "A", name: "느린 응답", desc: "응답이 약 3초 뒤 도착합니다. 그동안 버튼을 다시 누를 수 있는지 확인하세요." },
+    { id: "B", name: "결제 실패", desc: "카드사가 결제를 거절합니다. 화면 안내가 실제 결과와 맞는지 확인하세요." },
+    { id: "C", name: "중복 요청", desc: "같은 결제 시도에 요청이 여러 번 발생합니다. 요청 개수와 실제 처리 결과를 비교하세요." },
+  ],
+  manual: [
+    { h: "1. 결제 요청은 '기다리는' 작업입니다", p: "requestPayment() 는 서버에 요청을 보내고 응답이 올 때까지 기다립니다. 그래서 async 함수 안에서 await 를 붙여 호출해야 결과 객체를 받을 수 있습니다. await 가 없으면 결과 대신 '약속(Promise)'이 들어와 result.ok 같은 값이 undefined 가 됩니다." },
+    { h: "2. HTTP 상태 코드와 결제 성공은 다릅니다", p: "서버가 200 OK 로 응답했다는 것은 '요청을 받아 처리했다'는 뜻이지 '결제가 승인됐다'는 뜻이 아닙니다. 승인 여부는 응답 본문의 result.ok 또는 result.status(SUCCESS / DECLINED …)로 판단해야 합니다. 409 는 서버가 같은 요청을 이미 받았다는 뜻입니다." },
+    { h: "3. 처리 중에는 다시 보내지 않기 (클라이언트 보호)", p: "사용자가 버튼을 여러 번 누르면 요청이 그만큼 나갑니다. 처리 중 플래그(isProcessing)를 두고 요청 전에 true, 응답 후에 false 로 바꾸면서 true 일 때는 함수를 바로 return 하면 반복 요청을 막을 수 있습니다. 화면에서는 버튼을 비활성화하고 '처리 중' 안내를 보여줍니다." },
+    { h: "4. 같은 결제 시도는 한 번만 처리하기 (서버 보호, 멱등성)", p: "클라이언트 보호만으로는 부족합니다(새로고침, 느린 네트워크, 다른 탭). 같은 결제 시도에 같은 키(idempotencyKey)를 붙여 보내면 서버는 그 키로 결과를 하나만 저장하고, 같은 키가 다시 오면 처리하지 않고 저장된 결과를 돌려줍니다. 키는 시도마다 하나여야 하며 클릭할 때마다 새로 만들면 의미가 없습니다." },
+    { h: "5. 결과에 따라 화면을 나누기", p: "성공(SUCCESS)이면 완료 화면, 실패(DECLINED)면 사유와 다시 시도 방법, 응답이 없거나 오류(TIMEOUT)면 '결과를 확인하는 중'을 보여줍니다. 결과가 불확실할 때 성공이나 실패로 단정하면 고객이 이중 결제하거나 표를 잃을 수 있습니다." },
+  ],
+  // 결제 UI 옵션 (상태별). 평가(verdict/why)는 private/data-private.js 의 TASK4_ANSWERS 에 있음
+  ui: [
+    { id: "btnLabel", title: "① 결제 버튼 문구", state: "A", choices: [
+      { id: "amount", label: "'244,000원 결제하기' (금액 포함)" }, { id: "pay", label: "'결제하기' (현재)" }, { id: "ok", label: "'확인'" }, { id: "go", label: "'결제 진행'" } ] },
+    { id: "processing", title: "② 처리 중 안내", state: "B", choices: [
+      { id: "none", label: "안내 없음 (현재)" }, { id: "text", label: "버튼 문구가 '처리 중…'으로 바뀜" }, { id: "spinner", label: "버튼 문구 변경 + 로딩 스피너" }, { id: "overlay", label: "화면 전체 로딩 오버레이 + '결제를 처리하고 있습니다' 안내" } ] },
+    { id: "lock", title: "③ 처리 중 버튼 상태", state: "B", choices: [
+      { id: "none", label: "그대로 누를 수 있음 (현재)" }, { id: "disabled", label: "처리 중에는 버튼 비활성화" }, { id: "hidden", label: "처리 중에는 버튼 숨김" } ] },
+    { id: "success", title: "④ 결제 성공 안내", state: "C", choices: [
+      { id: "text", label: "'결제 완료' 텍스트만 (현재)" }, { id: "detail", label: "체크 아이콘 + 예매번호·좌석 + '예매 내역 확인' 버튼" }, { id: "modal", label: "팝업으로 '완료' 표시 후 홈으로 이동" } ] },
+    { id: "fail", title: "⑤ 결제 실패 안내", state: "C", choices: [
+      { id: "none", label: "별도 안내 없음 (현재: 완료처럼 표시)" }, { id: "reason", label: "빨간 오류 문구 + 실패 사유" }, { id: "reasonHelp", label: "오류 문구 + 사유 + 해결 방법(다른 카드, 한도 확인)" } ] },
+    { id: "retry", title: "⑥ 실패 후 다시 시도", state: "C", choices: [
+      { id: "none", label: "없음 (현재)" }, { id: "retry", label: "'다시 시도' 버튼" }, { id: "retryHelp", label: "'다시 시도' + '결제수단 변경' + 고객센터 안내" } ] },
+    { id: "pending", title: "⑦ 결과 확인 필요(지연·오류) 안내", state: "C", choices: [
+      { id: "none", label: "없음 (현재)" }, { id: "wait", label: "'결제 결과를 확인하고 있습니다' + 잠시 후 조회 안내" }, { id: "waitCheck", label: "확인 중 안내 + '결제 상태 조회' 버튼 + 중복 결제 주의 문구" } ] },
+  ],
+  defaultUi: { btnLabel: "pay", processing: "none", lock: "none", success: "text", fail: "none", retry: "none", pending: "none" },
+  report: {
+    questions: [
+      { id: "problem", title: "① 발견한 문제", help: "결제 과정에서 어떤 문제가 발생했나요?" },
+      { id: "ux", title: "② 사용자 경험 측면의 문제", help: "사용자가 어떤 상황에서 혼란을 겪거나 잘못된 행동을 할 수 있었나요?" },
+      { id: "dev", title: "③ 개발 측면의 문제", help: "어떤 프로그램 동작 때문에 오류가 발생했나요?" },
+      { id: "followup", title: "⑥ 추가 확인이 필요한 사항", help: "결제 처리와 관련하여 추가로 확인할 사항을 작성하세요." },
+    ],
+  },
+};
+
+// =====================================================================
+//  TASK-005 《수상한 배포 기록》 — 공유 폴더 · Git 기록 · 배포 이력 · QA · 지난 대화 · 타임라인 (모두 교육용 가상 데이터)
+//  시간 기준: 사건 전날(10.18) 오후 ~ 오늘(10.19) 아침. 게임 전체의 버전 데이터와 일치해야 함
+//   · v1.0.2 (빌드 b-1002-c91e) = 디자인 v2 + 오류 수정 전 코드 = 사고 당시 운영 버전
+//   · v1.0.4 (빌드 b-1004-7f3a) = 디자인 v4 + 예매 버튼·결제 처리 수정 = 스테이징/QA 통과 버전
+// =====================================================================
+TASKS.push({
+  no: 5, code: "TASK-005", status: "진행 전",
+  title: "수상한 배포 기록",
+  subtitle: "사라진 수정 내역과 잘못된 운영 버전의 진실",
+  owner: "이서연", due: "오후 4:30", from: "김팀장", priority: "긴급", kind: "배포 사고 조사",
+  background: "TICKET ON의 운영 환경과 테스트 환경에서 서로 다른 디자인과 코드가 발견되었습니다. 디자인팀과 개발팀은 최종 작업을 완료했다고 보고했으나, 실제 운영 사이트에는 이전 버전의 산출물이 반영되어 있었습니다. 당시 배포 과정에 문제가 있었을 가능성이 있습니다.",
+  goal: "프로젝트 파일의 버전을 조사하고, 디자인팀과 개발팀의 변경 기록을 확인합니다. 테스트 환경과 운영 환경의 차이를 분석하고 배포 기록과 관련 자료를 대조한 뒤, 사고 발생 과정을 시간순으로 재구성하고 근본 원인과 재발 방지 대책을 작성합니다.",
+  attachments: [
+    { type: "ops", file: "files", name: "프로젝트_공유폴더", meta: "TICKET_ON 공유 드라이브" },
+    { type: "dhist", name: "디자인_변경이력", meta: "TICKETON_Design v2 → v4" },
+    { type: "ops", file: "git", name: "Git_커밋기록", meta: "ticketon-web 저장소" },
+    { type: "ops", file: "deploy", name: "배포_이력", meta: "DAYEON DEPLOY" },
+    { type: "ops", file: "qa", name: "QA_테스트결과", meta: "스테이징 테스트 10.18" },
+    { type: "ops", file: "chat", name: "메신저_지난대화", meta: "#프로젝트-티켓온 · 어제" },
+    { type: "ops", file: "guide", name: "배포_업무가이드", meta: "참고자료" },
+  ],
+});
+
+const TASK5 = {
+  // ---------- 공유 폴더 ----------
+  folders: [
+    { id: "root", name: "TICKET_ON", parent: null },
+    { id: "plan", name: "01_기획자료", parent: "root" },
+    { id: "design", name: "02_디자인", parent: "root" },
+    { id: "dev", name: "03_개발", parent: "root" },
+    { id: "src", name: "source", parent: "dev" },
+    { id: "build", name: "build", parent: "dev" },
+    { id: "qa", name: "04_QA", parent: "root" },
+    { id: "rel", name: "05_배포", parent: "root" },
+    { id: "final", name: "final", parent: "rel" },
+    { id: "finalnew", name: "final_new", parent: "rel" },
+    { id: "finalfinal", name: "최종_진짜최종", parent: "rel" },
+  ],
+  files: [
+    { id: "f-plan", folder: "plan", name: "TICKETON_기획안_v1.pdf", type: "PDF", modified: "10.06 14:20", author: "김팀장", size: "2.4 MB", version: "v1",
+      info: { kind: "기획 문서", summary: "공연 예매 서비스 기획안 (화면 흐름·요구사항). 사건과 직접 관련은 없음.", history: [{ at: "10.06 14:20", by: "김팀장", what: "업로드" }] } },
+    { id: "f-d2", folder: "design", name: "TICKETON_Design_v2.fig", type: "Figma", modified: "10.10 16:05", author: "한사원", size: "18.2 MB", version: "v2",
+      info: { kind: "디자인 파일", designVersion: "v2", summary: "운영 사이트(v1.0.2)에 적용된 디자인. 예매하기 버튼 대비 낮음, 좌석 상태 표현 불명확, 모바일 레이아웃 문제.", changes: ["예매하기 버튼: 연회색 (저대비)", "좌석 상태: 색만으로 구분", "모바일: 결제 버튼 잘림"], history: [{ at: "10.10 16:05", by: "한사원", what: "업로드" }, { at: "10.13 10:30", by: "이대리", what: "개발 반영 (v1.0.2)" }] } },
+    { id: "f-d3", folder: "design", name: "TICKETON_Design_v3.fig", type: "Figma", modified: "10.14 11:40", author: "한사원", size: "19.0 MB", version: "v3",
+      info: { kind: "디자인 파일", designVersion: "v3", summary: "중간 수정안. 공연 정보 배치와 주요 버튼 스타일 개선. 예매하기 버튼은 아직 미확정.", changes: ["공연 정보 배치 개선", "주요 버튼 스타일 개선"], history: [{ at: "10.14 11:40", by: "한사원", what: "업로드" }, { at: "10.14 15:00", by: "김팀장", what: "검토 의견 (예매 버튼 더 강조)" }] } },
+    { id: "f-d4", folder: "design", name: "TICKETON_Design_v4.fig", type: "Figma", modified: "10.18 17:20", author: "한사원", size: "19.6 MB", version: "v4 (최종)",
+      info: { kind: "디자인 파일", designVersion: "v4", summary: "디자인팀 최종 시안. 예매하기 버튼 최종 디자인, 좌석 상태·접근성 개선, 모바일 레이아웃 수정. 10.18 17:22 메신저로 전달됨.", changes: ["예매하기 버튼: 파란색 주 버튼 (최종)", "좌석 상태: 색 + 아이콘·텍스트", "모바일 레이아웃 수정"], history: [{ at: "10.18 17:20", by: "한사원", what: "최종 업로드" }, { at: "10.18 17:22", by: "한사원", what: "#프로젝트-티켓온에 전달" }, { at: "10.18 17:28", by: "이대리", what: "개발 반영 (커밋 c17a3b8)" }] } },
+    { id: "f-src", folder: "src", name: "ticketon-web (git)", type: "저장소", modified: "10.18 17:30", author: "이대리", size: "-", version: "release/1.0.4",
+      info: { kind: "소스 저장소", codeVersion: "release/1.0.4 · 최신 커밋 5d0c4e2", summary: "개발팀 소스. 브랜치 release/1.0.4 에 예매 버튼 수정·결제 처리 수정·디자인 v4 적용이 커밋되어 있음. 자세한 내용은 Git_커밋기록 참고.", history: [{ at: "10.15 17:50", by: "이대리", what: "release 1.0.2 (9e3b1a0)" }, { at: "10.18 16:40", by: "이대리", what: "fix: reserve button (a81f2c9)" }, { at: "10.18 16:55", by: "이대리", what: "fix: payment result (b42e7d1)" }, { at: "10.18 17:28", by: "이대리", what: "style: design v4 (c17a3b8)" }, { at: "10.18 17:30", by: "이대리", what: "release 1.0.4 (5d0c4e2)" }] } },
+    { id: "f-b102", folder: "build", name: "ticketon_v1.0.2.zip", type: "빌드", modified: "10.15 17:58", author: "이대리", size: "4.1 MB", version: "v1.0.2",
+      info: { kind: "빌드 산출물", buildId: "b-1002-c91e", designVersion: "v2", codeVersion: "9e3b1a0 (main · v1.0.2)", buildAt: "10.15 17:58", owner: "이대리", summary: "초기 운영 배포용 빌드. 디자인 v2, 예매 버튼·결제 처리 수정 전 코드.", changes: ["공연 상세·좌석·결제 기본 기능"], history: [{ at: "10.15 17:58", by: "이대리", what: "빌드 생성" }, { at: "10.15 18:00", by: "김팀장", what: "05_배포/final 로 복사" }] } },
+    { id: "f-b104", folder: "build", name: "ticketon_v1.0.4.zip", type: "빌드", modified: "10.18 17:35", author: "이대리", size: "4.3 MB", version: "v1.0.4",
+      info: { kind: "빌드 산출물", buildId: "b-1004-7f3a", designVersion: "v4", codeVersion: "5d0c4e2 (release/1.0.4)", buildAt: "10.18 17:35", owner: "이대리", summary: "스테이징 테스트용 빌드. 디자인 v4 + 예매 버튼 수정(a81f2c9) + 결제 처리 수정(b42e7d1) 포함.", changes: ["fix: reserve button event selector", "fix: payment result handling", "style: apply final design v4"], history: [{ at: "10.18 17:35", by: "이대리", what: "빌드 생성" }, { at: "10.18 17:38", by: "이대리", what: "스테이징 배포 (D-117)" }, { at: "10.18 17:40", by: "이대리", what: "05_배포/final_new 로 복사" }] } },
+    { id: "f-qa", folder: "qa", name: "테스트결과.xlsx", type: "Excel", modified: "10.18 17:45", author: "이대리", size: "96 KB", version: "10.18",
+      info: { kind: "QA 결과", buildId: "b-1004-7f3a", summary: "스테이징(v1.0.4, 빌드 b-1004-7f3a)에서 12개 항목 테스트 · 12 PASS. 자세한 내용은 QA_테스트결과 참고.", history: [{ at: "10.18 17:45", by: "이대리", what: "테스트 완료·업로드" }] } },
+    { id: "f-rf102", folder: "final", name: "ticketon_v1.0.2.zip", type: "빌드", modified: "10.15 18:00", author: "김팀장", size: "4.1 MB", version: "v1.0.2",
+      info: { kind: "빌드 산출물 (복사본)", buildId: "b-1002-c91e", designVersion: "v2", codeVersion: "9e3b1a0 (main · v1.0.2)", buildAt: "10.15 17:58", owner: "이대리", summary: "10.15 운영 배포 때 사용한 파일의 복사본. 내용은 03_개발/build/ticketon_v1.0.2.zip 과 같음.", changes: ["공연 상세·좌석·결제 기본 기능"], history: [{ at: "10.15 18:00", by: "김팀장", what: "복사" }, { at: "10.15 18:02", by: "김팀장", what: "운영 배포 (D-110)" }] } },
+    { id: "f-rn104", folder: "finalnew", name: "ticketon_v1.0.4.zip", type: "빌드", modified: "10.18 17:40", author: "이대리", size: "4.3 MB", version: "v1.0.4",
+      info: { kind: "빌드 산출물 (복사본)", buildId: "b-1004-7f3a", designVersion: "v4", codeVersion: "5d0c4e2 (release/1.0.4)", buildAt: "10.18 17:35", owner: "이대리", summary: "QA 통과한 v1.0.4 빌드의 복사본. 운영 배포용으로 올려 둔 파일.", changes: ["fix: reserve button event selector", "fix: payment result handling", "style: apply final design v4"], history: [{ at: "10.18 17:40", by: "이대리", what: "복사 (운영 배포용)" }] } },
+    { id: "f-ff102", folder: "finalfinal", name: "ticketon_v1.0.2.zip", type: "빌드", modified: "10.16 09:10", author: "김팀장", size: "4.1 MB", version: "v1.0.2",
+      info: { kind: "빌드 산출물 (복사본)", buildId: "b-1002-c91e", designVersion: "v2", codeVersion: "9e3b1a0 (main · v1.0.2)", buildAt: "10.15 17:58", owner: "이대리", summary: "10.16 아침 김팀장이 복사해 둔 빌드 파일. 포함된 버전·빌드 ID·생성 시각은 아래 정보를 확인.", changes: ["공연 상세·좌석·결제 기본 기능"], history: [{ at: "10.16 09:10", by: "김팀장", what: "복사 (폴더 생성)" }, { at: "10.18 17:54", by: "김팀장", what: "운영 배포에 사용 (D-118)" }] } },
+  ],
+  // ---------- Git 기록 ----------
+  repo: "dayeon/ticketon-web",
+  commits: [
+    { id: "5d0c4e2", branch: "release/1.0.4", author: "이대리", at: "10.18 17:30", msg: "chore: release 1.0.4", tag: "v1.0.4", files: ["package.json", "CHANGELOG.md"], diff: ["-  \"version\": \"1.0.3\",", "+  \"version\": \"1.0.4\",", "+ ## 1.0.4", "+ - fix: reserve button event selector", "+ - fix: payment result handling", "+ - style: apply final design v4"] },
+    { id: "c17a3b8", branch: "release/1.0.4", author: "이대리", at: "10.18 17:28", msg: "style: apply final design v4", files: ["css/ticket.css", "index.html"], diff: ["- .reserve-btn { background: #e5e7eb; color: #6b7280; }", "+ .reserve-btn { background: #1a8cff; color: #fff; }", "- .seat.taken { background: #ddd; }", "+ .seat.taken { background: #ddd; } .seat.taken::after { content: \"×\"; }", "+ @media (max-width: 480px) { .pay-btn { width: 100%; } }"] },
+    { id: "b42e7d1", branch: "release/1.0.4", author: "이대리", at: "10.18 16:55", msg: "fix: payment result handling", files: ["js/payment.js"], diff: ["+ let isProcessing = false;", "  async function handlePayment() {", "+   if (isProcessing) return;", "+   isProcessing = true;", "-   const result = await requestPayment(order);", "-   showSuccessMessage();", "+   const result = await requestPayment(order, { idempotencyKey: createIdempotencyKey(order) });", "+   if (result.ok) showSuccessMessage(result); else showFailureMessage(result);", "+   isProcessing = false;"] },
+    { id: "a81f2c9", branch: "release/1.0.4", author: "이대리", at: "10.18 16:40", msg: "fix: reserve button event selector", files: ["js/reservation.js"], diff: ["- const reserveButton = document.getElementById(\"reserveButton\");", "+ const reserveButton = document.getElementById(\"reserveBtn\");"] },
+    { id: "e4d9c07", branch: "release/1.0.4", author: "이대리", at: "10.17 15:10", msg: "feat: seat map tooltip", files: ["js/seats.js", "css/ticket.css"], diff: ["+ seat.title = `${seat.row}${seat.no} · ${seat.grade}석`;"] },
+    { id: "9e3b1a0", branch: "main", author: "이대리", at: "10.15 17:50", msg: "chore: release 1.0.2", tag: "v1.0.2", files: ["package.json"], diff: ["-  \"version\": \"1.0.1\",", "+  \"version\": \"1.0.2\","] },
+    { id: "7a2f6c1", branch: "main", author: "이대리", at: "10.13 10:30", msg: "feat: apply design v2 and checkout page", files: ["css/ticket.css", "checkout.html", "js/payment.js"], diff: ["+ .reserve-btn { background: #e5e7eb; color: #6b7280; }", "+ async function handlePayment() {", "+   const result = await requestPayment(order);", "+   showSuccessMessage();", "+ }"] },
+  ],
+  builds: [
+    { id: "b-1004-7f3a", version: "v1.0.4", commit: "5d0c4e2", branch: "release/1.0.4", at: "10.18 17:35", by: "이대리", design: "v4" },
+    { id: "b-1002-c91e", version: "v1.0.2", commit: "9e3b1a0", branch: "main", at: "10.15 17:58", by: "이대리", design: "v2" },
+  ],
+  // ---------- 배포 이력 (DAYEON DEPLOY) ----------
+  envs: [
+    { id: "production", name: "운영 (Production)", url: "ticketon.dayeon.co.kr", version: "v1.0.2", buildId: "b-1002-c91e", deployedAt: "10.18 17:54", by: "김팀장", status: "running", note: "오늘 팀이 적용한 수정 사항은 핫픽스로 별도 반영 중" },
+    { id: "staging", name: "테스트 (Staging)", url: "staging.ticketon.test", version: "v1.0.4", buildId: "b-1004-7f3a", deployedAt: "10.18 17:38", by: "이대리", status: "running", note: "QA 12/12 통과" },
+  ],
+  deploys: [
+    { id: "D-118", env: "production", version: "v1.0.2", artifact: "ticketon_v1.0.2.zip", artifactPath: "05_배포/최종_진짜최종/ticketon_v1.0.2.zip", buildId: "b-1002-c91e", by: "김팀장", at: "10.18 17:54", result: "success", verification: "skipped", qaRef: "-", duration: "50s",
+      log: ["[17:54:11] Deployment requested by 김팀장", "[17:54:12] Environment: production", "[17:54:12] Artifact selected: 05_배포/최종_진짜최종/ticketon_v1.0.2.zip", "[17:54:13] Artifact build id: b-1002-c91e", "[17:54:14] Build verification: skipped (--skip-verify)", "[17:54:14] QA approval check: skipped", "[17:54:20] Uploading artifact... done", "[17:54:52] Restarting application...", "[17:55:01] Deployment completed (status: success)"] },
+    { id: "D-117", env: "staging", version: "v1.0.4", artifact: "ticketon_v1.0.4.zip", artifactPath: "03_개발/build/ticketon_v1.0.4.zip", buildId: "b-1004-7f3a", by: "이대리", at: "10.18 17:38", result: "success", verification: "passed", qaRef: "테스트결과.xlsx (17:45)", duration: "42s",
+      log: ["[17:38:02] Deployment requested by 이대리", "[17:38:03] Environment: staging", "[17:38:03] Artifact selected: 03_개발/build/ticketon_v1.0.4.zip", "[17:38:04] Artifact build id: b-1004-7f3a (release/1.0.4 @ 5d0c4e2)", "[17:38:05] Build verification: passed", "[17:38:12] Uploading artifact... done", "[17:38:40] Restarting application...", "[17:38:44] Deployment completed (status: success)"] },
+    { id: "D-110", env: "production", version: "v1.0.2", artifact: "ticketon_v1.0.2.zip", artifactPath: "05_배포/final/ticketon_v1.0.2.zip", buildId: "b-1002-c91e", by: "김팀장", at: "10.15 18:02", result: "success", verification: "passed", qaRef: "초기 QA (10.15)", duration: "55s",
+      log: ["[18:02:10] Deployment requested by 김팀장", "[18:02:11] Environment: production", "[18:02:11] Artifact selected: 05_배포/final/ticketon_v1.0.2.zip", "[18:02:12] Artifact build id: b-1002-c91e", "[18:02:13] Build verification: passed", "[18:02:20] Uploading artifact... done", "[18:02:58] Restarting application...", "[18:03:05] Deployment completed (status: success)"] },
+    { id: "D-109", env: "staging", version: "v1.0.2", artifact: "ticketon_v1.0.2.zip", artifactPath: "03_개발/build/ticketon_v1.0.2.zip", buildId: "b-1002-c91e", by: "이대리", at: "10.15 17:59", result: "success", verification: "passed", qaRef: "초기 QA (10.15)", duration: "40s",
+      log: ["[17:59:01] Deployment requested by 이대리", "[17:59:02] Environment: staging", "[17:59:02] Artifact selected: 03_개발/build/ticketon_v1.0.2.zip", "[17:59:03] Build verification: passed", "[17:59:41] Deployment completed (status: success)"] },
+  ],
+  // ---------- QA 결과 (10.18 스테이징) ----------
+  qa: { env: "staging", version: "v1.0.4", buildId: "b-1004-7f3a", at: "10.18 17:45", by: "이대리",
+    cases: [
+      ["공연 상세 · 예매하기 버튼 표시", "PASS"], ["예매하기 클릭 → 좌석 선택 이동", "PASS"], ["좌석 상태 구분 (아이콘)", "PASS"], ["모바일 결제 버튼 표시", "PASS"],
+      ["결제 요청 1회 처리", "PASS"], ["결제 연속 클릭 중복 방지", "PASS"], ["결제 실패 안내", "PASS"], ["결제 완료 안내", "PASS"],
+      ["마이페이지 예매 내역", "PASS"], ["예매 취소", "PASS"], ["로그인/로그아웃", "PASS"], ["검색", "PASS"],
+    ] },
+  // ---------- 지난 대화 (10.18 #프로젝트-티켓온) ----------
+  chatlog: [
+    { from: "han", at: "10.18 17:22", text: "v4 최종 시안 업로드했습니다! 02_디자인 폴더에 올렸어요." },
+    { from: "lee", at: "10.18 17:29", text: "v4 반영해서 커밋했습니다. 빌드 돌릴게요." },
+    { from: "lee", at: "10.18 17:47", text: "수정한 코드로 스테이징 테스트 완료했습니다. v1.0.4 입니다. 05_배포/final_new 에 올려뒀어요." },
+    { from: "kim", at: "10.18 17:50", text: "오케이~ 최종 폴더에서 가져다가 배포할게요!" },
+    { from: "han", at: "10.18 17:51", text: "넵 내일 시연 잘 됐으면 좋겠네요ㅎㅎ" },
+    { from: "kim", at: "10.18 17:56", text: "배포 완료! 내일 시연 문제없겠죠? ^^" },
+    { from: "lee", at: "10.18 17:57", text: "넵 고생하셨습니다. 먼저 들어가 보겠습니다." },
+  ],
+  // ---------- 배포 업무 가이드 ----------
+  guide: [
+    { h: "1. 산출물 식별", p: "배포할 파일은 이름이 아니라 빌드 ID(build id)로 식별합니다. 빌드 ID는 빌드 산출물 상세, 배포 로그, QA 결과에 함께 기록됩니다." },
+    { h: "2. 환경", p: "테스트(Staging)에서 QA를 통과한 빌드와 같은 빌드 ID를 운영(Production)에 배포합니다. 테스트와 운영의 버전이 다르면 테스트 결과는 의미가 없습니다." },
+    { h: "3. 검증", p: "배포 도구의 Build verification 은 산출물의 빌드 ID와 QA 승인 기록을 대조합니다. 건너뛰기(--skip-verify)는 장애 복구 등 예외 상황에서만 사용합니다." },
+    { h: "4. 기록", p: "배포 완료(success)는 '파일이 올라갔다'는 뜻이지 '올바른 버전이 올라갔다'는 뜻이 아닙니다. 배포 후에는 운영 버전과 핵심 기능을 확인합니다." },
+  ],
+  // ---------- 타임라인 (at 은 검증용, 화면에는 표시하지 않음) ----------
+  timeline: [
+    { id: "e1", label: "개발팀 주요 버그 수정", sub: "예매 버튼 · 결제 처리", at: "10.18 16:40" },
+    { id: "e2", label: "디자인팀 최종 시안 v4 완성", sub: "TICKETON_Design_v4.fig", at: "10.18 17:20" },
+    { id: "e3", label: "테스트용 빌드 v1.0.4 생성", sub: "b-1004-7f3a", at: "10.18 17:35" },
+    { id: "e4", label: "QA 테스트 진행", sub: "스테이징 · 12개 항목", at: "10.18 17:45" },
+    { id: "e5", label: "운영 환경에 v1.0.2 배포", sub: "D-118", at: "10.18 17:54" },
+    { id: "e6", label: "고객 불만 접수", sub: "CS 문의 23건", at: "10.19 09:00" },
+  ],
+  timelineStart: ["e5", "e2", "e6", "e1", "e4", "e3"],
+  questionsB: [
+    { id: "qb1", title: "디자인팀이 마지막으로 수정한 버전은 무엇인가요?", help: "파일 이름·수정 시각·전달 기록으로 확인" },
+    { id: "qb2", title: "개발팀이 오류를 수정한 기록이 존재하나요? 어떤 기록인가요?", help: "커밋 ID와 메시지" },
+    { id: "qb3", title: "그 수정 사항은 어떤 빌드에 포함되어 있나요?", help: "빌드 ID로 적기" },
+    { id: "qb4", title: "당시 운영 중이던 버전에는 그 수정 사항이 있었나요?", help: "운영 환경의 버전·빌드 ID와 비교" },
+  ],
+  report: {
+    questions: [
+      { id: "cause", title: "③ 사고의 직접 원인", help: "어떤 파일이 어떤 과정으로 운영에 올라갔나요?" },
+      { id: "why", title: "④ 사고 발생을 예방하지 못한 이유", help: "어떤 업무 과정(확인·검증·소통)이 빠져 있었나요? '누가'보다 '어떤 과정'에 집중하세요." },
+      { id: "prevent", title: "⑤ 재발 방지 대책", help: "버전 관리·배포 절차·QA 승인 등 팀이 제안하는 방법" },
+    ],
+  },
+};
+
+// =====================================================================
+//  TASK-006 《퇴근 5분 전, 최후의 배포》 — 배포 후보 · 최종 QA · 출시 승인 회의 · 배포 실행 (교육용 가상 데이터)
+//  버전 일관성: v1.0.2(사고 당시 운영) · v1.0.4(TASK-005 테스트 빌드) · v1.0.5(TASK-002~004 복구 포함, 최종 QA 통과) · v1.0.6(김팀장 추가 수정, QA 미실시)
+// =====================================================================
+TASKS.push({
+  no: 6, code: "TASK-006", status: "진행 전",
+  title: "퇴근 5분 전, 최후의 배포",
+  subtitle: "최종 QA와 서비스 출시 승인",
+  owner: "이서연", due: "오후 6:00", from: "김팀장", priority: "최상", kind: "최종 배포 검수 및 출시 승인",
+  background: "기존 운영 사이트의 오류가 수정되었으며, 최종 빌드의 배포가 준비되었습니다. 하지만 배포 후보가 여러 개 존재하고, 일부 버전은 검증되지 않은 변경 사항을 포함하고 있습니다. 현재 운영 중인 버전을 대체할 최종 빌드를 선택하고, 품질 검증과 출시 승인 절차를 수행해야 합니다.",
+  goal: "배포 후보 버전의 차이를 확인하고 디자인·기능 QA를 수행합니다. 테스트 결과를 검토해 최종 배포 버전을 결정하고, 배포 전 체크리스트를 작성한 뒤 배포를 승인하고 결과를 확인합니다. 운영 상태를 확인하고 최종 업무를 마무리합니다.",
+  attachments: [
+    { type: "ops6", file: "candidates", name: "Build_History", meta: "배포 후보 빌드 이력 · DAYEON DEPLOY" },
+    { type: "ops6", file: "docs", doc: "notes", name: "release_notes.md", meta: "릴리스 노트" },
+    { type: "ops6", file: "docs", doc: "qa", name: "QA_Final_Report", meta: "최종 QA 결과 (v1.0.5)" },
+    { type: "ops6", file: "docs", doc: "design", name: "Design_Checklist", meta: "디자인 검수표" },
+    { type: "ops6", file: "docs", doc: "deploy", name: "Deployment_Checklist", meta: "배포 체크리스트" },
+    { type: "ops6", file: "docs", doc: "rollback", name: "Rollback_Guide", meta: "장애 발생 시 복구 절차" },
+  ],
+});
+
+const TASK6 = {
+  stagingBuild: "v1.0.5",
+  candidates: [
+    { id: "v1.0.2", buildId: "b-1002-c91e", builtAt: "10.15 17:58", by: "이대리", branch: "main @ 9e3b1a0", design: "v2", latest: false,
+      summary: "사고 당시 운영 중이던 버전. 이전 디자인 v2 포함, 예매 버튼·결제 처리 오류 존재.",
+      includes: [], excludes: ["TASK-002 디자인 수정", "TASK-003 예매 버튼 수정", "TASK-004 결제 처리 개선"],
+      qa: { status: "passed", label: "초기 QA (10.15) · 8/8", at: "10.15 17:30", by: "이대리", final: false, note: "오류 수정 전 항목 기준" },
+      approval: { status: "approved", label: "10.15 초기 출시 승인", at: "10.15 18:00", by: "김팀장", release: false },
+      notes: ["## 1.0.2 (10.15)", "- 공연 상세 · 좌석 선택 · 결제 확인 기본 기능", "- 디자인 v2 적용"] },
+    { id: "v1.0.4", buildId: "b-1004-7f3a", builtAt: "10.18 17:35", by: "이대리", branch: "release/1.0.4 @ 5d0c4e2", design: "v4", latest: false,
+      summary: "TASK-005에서 조사한 테스트 버전. 디자인 v4와 개발 수정 일부 포함. 이후 추가된 결제 상태별 UI·멱등성 보완·보류 처리는 미포함.",
+      includes: ["TASK-003 예매 버튼 수정 (a81f2c9)", "결제 결과 분기 (b42e7d1)", "디자인 v4 적용 (c17a3b8)"], excludes: ["TASK-002 수정안의 좌석 상태·모바일 보완", "TASK-004 처리 중 안내 · 멱등성 키 · 결과 확인 중 처리"],
+      qa: { status: "passed", label: "스테이징 QA (10.18) · 12/12", at: "10.18 17:45", by: "이대리", final: false, note: "당시 테스트 항목 기준 · 결제 중복·보류 항목 없음" },
+      approval: { status: "none", label: "운영 배포 승인 없음 (스테이징 전용)", at: "-", by: "-", release: false },
+      notes: ["## 1.0.4 (10.18)", "- fix: reserve button event selector", "- fix: payment result handling", "- style: apply final design v4"] },
+    { id: "v1.0.5", buildId: "b-1005-a2d8", builtAt: "10.19 15:40", by: "이대리", branch: "release/1.0.5 @ f3c8e21", design: "v4 + 수정안", latest: false,
+      summary: "오늘 팀이 수정한 디자인·예매 버튼·결제 처리를 모두 포함한 빌드. 최종 QA 통과, 배포 검토 완료.",
+      includes: ["TASK-002 디자인 수정 반영", "TASK-003 예매 버튼 오류 수정", "TASK-004 결제 처리 개선 (처리 중 가드 · 멱등성 키 · 결과 분기 · 보류 처리 · 상태별 UI)"], excludes: [],
+      qa: { status: "passed", label: "최종 QA (10.19 16:10) · 회귀 14/14 · 결제 5/5", at: "10.19 16:10", by: "이대리 · 한사원", final: true, note: "스테이징 b-1005-a2d8 기준" },
+      approval: { status: "approved", label: "배포 검토 완료 · 출시 후보 승인 (10.19 16:20)", at: "10.19 16:20", by: "이대리 · 한사원", release: true },
+      notes: ["## 1.0.5 (10.19)", "- design: apply reviewed design (seat state icons, mobile pay button, primary reserve button)", "- fix: reserve button event selector", "- fix: payment double request guard + idempotency key", "- fix: payment result branching, pending handling, state UI", "- qa: final regression 14/14, payment 5/5"] },
+    { id: "v1.0.6", buildId: "b-1006-e51c", builtAt: "10.19 17:35", by: "김팀장", branch: "hotfix/banner @ 0b7d4a9", design: "v4 + 수정안", latest: true,
+      summary: "김팀장이 시연 직전 추가 변경을 반영해 만든 가장 최신 빌드. 최종 QA와 배포 승인은 진행되지 않음.",
+      includes: ["v1.0.5 전체", "공연 상세 배너 문구 변경", "결제 수수료 표시 방식 변경", "결제 설정 파일 수정 (untested)"], excludes: [],
+      qa: { status: "none", label: "QA 미실시", at: "-", by: "-", final: false, note: "변경 사항 검토 없음" },
+      approval: { status: "none", label: "배포 승인 미완료", at: "-", by: "-", release: false },
+      notes: ["## 1.0.6 (10.19 17:35) — 김팀장", "- change: banner text on show page", "- change: fee display (config)", "- change: payment config (untested)", "- NOTE: QA not run"] },
+  ],
+  qaCases: [
+    { id: "QA-001", name: "공연 상세 화면", area: "디자인", kind: "observe", steps: ["TICKET ON 공연 상세 화면을 연다", "공연명·날짜·가격 정보가 보이는지 확인한다", "예매하기 버튼의 가독성(대비)과 정보의 시각적 위계를 확인한다"], expect: "핵심 정보가 보이고 예매하기 버튼이 주 버튼으로 구분됨 · 관찰 기록 필요" },
+    { id: "QA-002", name: "모바일 화면", area: "디자인", kind: "observe", steps: ["TICKET ON 테스트 바의 [모바일 보기]를 켠다", "주요 버튼이 잘리지 않고 정보가 정상 배치되는지 확인한다", "좌석 선택 화면까지 이동해 본다"], expect: "작은 화면에서 버튼·정보가 잘리지 않음 · 관찰 기록 필요" },
+    { id: "QA-003", name: "예매 기능", area: "개발", kind: "auto", steps: ["공연 상세에서 예매하기 버튼을 클릭한다", "좌석 선택 화면으로 이동하는지 확인한다"], expect: "클릭 이벤트가 동작하고 좌석 선택으로 이동" },
+    { id: "QA-004", name: "결제 중복 요청", area: "개발", kind: "auto", steps: ["결제 확인에서 시나리오 C(연속 클릭)를 고른다", "결제하기를 빠르게 여러 번 누른다", "요청 로그에서 같은 시도의 처리 결과와 청구 횟수를 확인한다"], expect: "동일한 결제 시도가 한 번만 처리됨" },
+    { id: "QA-005", name: "결제 결과 표시", area: "디자인 + 개발", kind: "auto", steps: ["시나리오 B(결제 실패)로 결제한다", "처리 중 표시와 실패 안내를 확인한다", "실제 결과와 화면 안내가 일치하는지 확인한다"], expect: "처리 중 표시 · 실패 시 올바른 안내 · 결과 일치" },
+    { id: "QA-006", name: "전체 예매 시나리오", area: "통합", kind: "auto", steps: ["공연 선택 → 좌석 선택 → 결제 확인 → 가상 결제(시나리오 A)", "결제 결과 확인 → 마이페이지 예매 내역 확인"], expect: "처음부터 끝까지 정상 진행되고 예매 내역이 일치" },
+  ],
+  checklist: [
+    { id: "build", label: "적절한 빌드가 선택되었는가? (출시 후보로 검토·승인된 빌드)" },
+    { id: "qa", label: "해당 빌드의 최종 QA가 완료되었는가?" },
+    { id: "design", label: "디자인 검수가 이루어졌는가? (QA-001 · QA-002)" },
+    { id: "func", label: "핵심 기능 테스트가 통과했는가? (QA-003 ~ QA-006)" },
+    { id: "approval", label: "배포 승인 기록이 있는가? (출시 회의 승인 + 팀장 승인)" },
+    { id: "rollback", label: "장애 발생 시 복구 계획이 준비되었는가?" },
+  ],
+  agenda: [
+    { id: "a1", title: "안건 1. 현재 선택한 버전을 출시할 수 있는가?", desc: "QA 결과와 빌드 기록(QA·승인 기록)을 근거로 판단합니다." },
+    { id: "a2", title: "안건 2. 디자인팀과 개발팀의 검수는 완료되었는가?", desc: "디자인(QA-001·002)과 개발(QA-003~006) 영역의 결과를 함께 확인합니다." },
+    { id: "a3", title: "안건 3. 배포 후 문제가 발생하면 어떻게 대응할 것인가?", desc: "가용한 이전 정상 버전, 배포 기록, 롤백 절차를 확인합니다." },
+    { id: "a4", title: "안건 4. 현재 상태에서 출시를 진행할 것인가, 보류할 것인가?", desc: "합의 결과를 기록합니다." },
+  ],
+  deployLog: ["Deployment requested by 김팀장 (approved)", "Verifying release artifact {BUILD}...", "QA status verified: final QA passed", "Release approval verified", "Deploying to production...", "Uploading artifact... done", "Application startup completed", "Health check passed (3/3)", "Deployment successful — {VERSION} is live"],
+  docs: {
+    qa: { title: "QA_Final_Report · v1.0.5 (b-1005-a2d8)", meta: "10.19 16:10 · 스테이징 · 이대리 · 한사원", rows: [["회귀 테스트 (공연 상세·좌석·결제·마이페이지·검색·로그인)", "14/14 PASS"], ["결제 테스트 (정상·연속 클릭·지연·실패·예매 내역)", "5/5 PASS"], ["디자인 검수 (v4 + 수정안 · 데스크톱/모바일)", "통과 (한사원)"], ["결론", "출시 후보 승인 · 운영 배포 검토 완료"]], note: "QA는 스테이징의 빌드 b-1005-a2d8 에 대해 수행되었습니다. 다른 빌드 ID에는 적용되지 않습니다." },
+    design: { title: "Design_Checklist · 최종 디자인 검수표", meta: "한사원 · 10.19", rows: [["예매하기 버튼이 주 버튼으로 구분되는가 (대비)", "확인"], ["좌석 상태가 색 외의 방법으로도 구분되는가", "확인"], ["모바일에서 결제 버튼이 잘리지 않는가", "확인"], ["결제 처리 중·실패·확인 필요 상태 안내가 있는가", "확인"], ["시안(v4 + 수정안)과 구현 화면이 일치하는가", "확인 (b-1005-a2d8)"]], note: "검수는 빌드 b-1005-a2d8 기준입니다." },
+    deploy: { title: "Deployment_Checklist · 배포 체크리스트", meta: "개발팀 · v2 (TASK-005 이후 개정)", rows: [["배포할 빌드 ID가 QA 통과 빌드 ID와 같은가", "필수"], ["최종 QA·디자인 검수 기록이 있는가", "필수"], ["출시 승인 기록(회의·책임자)이 있는가", "필수"], ["Build verification 을 건너뛰지 않았는가", "필수"], ["롤백 대상 버전과 절차가 준비되었는가", "필수"], ["배포 후 운영 버전·핵심 기능을 확인했는가", "필수"]], note: "'가장 최신'이 '가장 안전'은 아닙니다. 검증되지 않은 변경은 배포하지 않습니다." },
+    rollback: { title: "Rollback_Guide · 장애 발생 시 복구 절차", meta: "개발팀", rows: [["1. 장애 감지", "헬스 체크 실패 · 오류 로그 급증 · 고객 문의"], ["2. 롤백 대상", "직전 정상 운영 빌드 (배포 이력에서 빌드 ID 확인)"], ["3. 실행", "DAYEON DEPLOY에서 해당 빌드로 재배포 (검증 건너뛰기 금지)"], ["4. 확인", "운영 버전 · 핵심 기능 · 헬스 체크"], ["5. 기록", "장애 원인·조치·재발 방지 기록"]], note: "롤백도 배포입니다. 같은 체크리스트를 적용합니다." },
+  },
+};
+
+// ---------- 신입사원 근무평가서 ----------
+const EVAL = {
+  items: [
+    { id: "analysis", name: "문제 분석력", desc: "고객 문의·기록에서 문제를 찾고 근거를 세움 (TASK-001 · 005)" },
+    { id: "ux", name: "UI/UX 이해 및 개선", desc: "사용자 경험 문제를 발견하고 개선안을 적용 (TASK-002 · 004)" },
+    { id: "dev", name: "개발 오류 해결", desc: "오류 재현·원인 조사·코드 수정·테스트 (TASK-003 · 004)" },
+    { id: "collab", name: "협업 및 의사소통", desc: "디자인·개발 관점을 함께 고려하고 합의함 (TASK-004 · 005 · 006)" },
+    { id: "qa", name: "테스트 및 품질 검증", desc: "검증 절차를 수행하고 결과를 근거로 판단 (TASK-004 · 006)" },
+    { id: "report", name: "업무 보고 및 책임감", desc: "보고서 제출·승인, 보완 요청 대응 (전체)" },
+  ],
+  titles: [
+    { id: "bug", name: "버그 퇴치 전문가", desc: "개발 오류 해결에 활약" },
+    { id: "ux", name: "UX 수호자", desc: "사용자 경험 개선에 활약" },
+    { id: "detective", name: "명탐정 신입사원", desc: "배포 사고 조사에 활약" },
+    { id: "qa", name: "QA의 신", desc: "테스트 및 검증에 활약" },
+    { id: "collab", name: "협업의 달인", desc: "디자인·개발 의견 조율에 활약" },
+    { id: "leave", name: "칼퇴 성공", desc: "최종 출시 및 퇴근 승인 완료" },
+  ],
+  summary: ["고객 불만 분석", "UI/UX 개선", "프런트엔드 오류 수정", "결제 처리 개선", "배포 사고 조사", "최종 QA 및 출시"],
+};

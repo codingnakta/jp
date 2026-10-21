@@ -32,7 +32,7 @@ const Live = {
     // 팀 상태 복원 (DB 우선)
     const remote = await Sync.db.get(`sessions/${Live.sid}/teamData/${Live.teamId}/state`);
     if (remote) {
-      ["task", "task2", "task3", "devView", "designView", "ticketScreen", "ticketUI", "ticketOrder", "taskView", "currentApp", "currentRoom", "answers", "acked"].forEach((k) => {
+      ["task", "task2", "task3", "task4", "task5", "task6", "evalViewed", "leftWork", "endingStage", "opsView", "devView", "designView", "ticketScreen", "ticketUI", "ticketOrder", "taskView", "currentApp", "currentRoom", "answers", "acked"].forEach((k) => {
         if (remote[k] !== undefined) G.state[k] = typeof remote[k] === "object" && remote[k] !== null && !Array.isArray(remote[k]) ? deepMerge(G.state[k] || {}, remote[k]) : remote[k];
       });
       migrate(G.state);
@@ -41,6 +41,7 @@ const Live = {
     Live._unsubs.push(Sync.db.on(`sessions/${Live.sid}/public`, Live.onPublic));
     Live._unsubs.push(Sync.db.on(`sessions/${Live.sid}/events`, Live.onEvents));
     Live._unsubs.push(Sync.db.on(`sessions/${Live.sid}/teamData/${Live.teamId}/review`, Live.onReview));
+    Live._unsubs.push(Sync.db.on(`sessions/${Live.sid}/teamData/${Live.teamId}/eval`, Live.onEval));
     Sync.connection.on((on) => { Live.renderBadge(); if (on && Live.saveState === "error") Live.flushSave(); });
     // 접속 상태
     const tp = `sessions/${Live.sid}/teams/${Live.teamId}`;
@@ -67,8 +68,19 @@ const Live = {
     // 공식 서비스 상태/업무 단계 변경 → 현재 화면 다시 그리기
     const changed = !prev || JSON.stringify(prev.officialService) !== JSON.stringify(p.officialService) || JSON.stringify(prev.tasks) !== JSON.stringify(p.tasks);
     if (changed && G.state.currentApp === "dev" && typeof renderDevtool === "function") renderDevtool();
+    const relChanged = !prev || JSON.stringify(prev.release) !== JSON.stringify(p.release);
+    if (relChanged && p.release && p.release.status === "deploying" && G.state.task6 && G.state.task6.started) toast({ title: "DAYEON DEPLOY", sub: "공식 배포", text: `팀장(교사)이 ${p.release.build} 운영 배포를 시작했습니다.`, app: "ops" });
+    if (relChanged && G.state.currentApp === "ops" && typeof renderOps === "function") renderOps();
+    if (p.evalReady && !G.state.evalReady) { G.state.evalReady = true; G.save(); if (G.state.currentApp === "task") renderTaskPage(); }
     if (changed) Live.rerender();
     Live.renderBadge();
+  },
+  onEval(v) {
+    if (!v || v.status !== "PUBLISHED") return;
+    const first = !G.state.evalDoc || G.state.evalDoc.status !== "PUBLISHED";
+    G.state.evalDoc = v; G.save();
+    if (first) toast({ title: "인사팀", sub: "근무평가서 발급", text: "이 팀의 신입사원 근무평가서가 발급되었습니다. DAYEON TASK › 근무평가서에서 확인하세요.", app: "task" });
+    if (G.state.currentApp === "task") renderTaskPage();
   },
   taskPhase(no) { return (Live.public && Live.public.tasks && Live.public.tasks["t" + no] && Live.public.tasks["t" + no].status) || "LOCKED"; },
   rerender() {
@@ -111,14 +123,14 @@ const Live = {
   // ---------- 교사 검토 ----------
   onReview(r) {
     Live.review = r || {};
-    [1, 2, 3].forEach((no) => {
+    [1, 2, 3, 4, 5, 6].forEach((no) => {
       const rv = Live.review["t" + no];
       if (!rv) return;
-      const s = no === 3 ? G.state.task3 : no === 2 ? G.state.task2 : G.state.task;
+      const s = no === 6 ? G.state.task6 : no === 5 ? G.state.task5 : no === 4 ? G.state.task4 : no === 3 ? G.state.task3 : no === 2 ? G.state.task2 : G.state.task;
       if (!s.reportSubmitted && rv.status !== "returned") return;
       if (rv.status === "approved" && s.review.status !== "approved") {
         s.review = { status: "approved", note: rv.note || "", locked: true };
-        s.done = true;
+        if (no !== 6) s.done = true;   // TASK-006 은 배포 후 확인 완료로 끝남
         appendMessage("dm-kim", { from: "kim", text: rv.note ? `보고서 승인했어요. ${rv.note}` : "보고서 승인했어요. 수고했어요!" }, { notify: true });
         toast({ title: "DAYEON TASK", sub: `TASK-00${no}`, text: "보고서가 승인되었습니다.", app: "task" });
       } else if (rv.status === "returned" && s.review.status !== "returned") {
@@ -140,7 +152,7 @@ const Live = {
   },
   async flushSave() {
     const s = G.state;
-    const data = { task: s.task, task2: s.task2, task3: s.task3, devView: s.devView, designView: s.designView, ticketScreen: s.ticketScreen, ticketUI: s.ticketUI || null, ticketOrder: s.ticketOrder, taskView: s.taskView, currentApp: s.currentApp, currentRoom: s.currentRoom, answers: s.answers || null, acked: s.acked, updatedAt: Date.now() };
+    const data = { task: s.task, task2: s.task2, task3: s.task3, task4: s.task4, task5: s.task5, task6: s.task6, evalViewed: !!s.evalViewed, leftWork: !!s.leftWork, endingStage: s.endingStage || null, opsView: s.opsView, devView: s.devView, designView: s.designView, ticketScreen: s.ticketScreen, ticketUI: s.ticketUI || null, ticketOrder: s.ticketOrder, taskView: s.taskView, currentApp: s.currentApp, currentRoom: s.currentRoom, answers: s.answers || null, acked: s.acked, updatedAt: Date.now() };
     Live.saveState = "saving"; Live.renderBadge();
     try {
       await Sync.db.set(`sessions/${Live.sid}/teamData/${Live.teamId}/state`, JSON.parse(JSON.stringify(data)));
@@ -153,7 +165,7 @@ const Live = {
 
   // 보고서 제출: 저장이 확인된 뒤에만 '제출됨'으로 표시
   async submitReport(no, report) {
-    const s = no === 2 ? G.state.task2 : G.state.task;
+    const s = TS(no);
     s.report = report; s.reportDraft = report;
     s.review = { status: "submitting", note: "", locked: false };
     renderTaskPage();

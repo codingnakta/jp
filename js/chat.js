@@ -440,11 +440,77 @@ function startFollowup4() {
   G.save();
   playSequence(FOLLOWUP4, "ticketon", 0, G.state.followup4, onFollowup4Done);
 }
-function onFollowup4Done() {
-  if (G.state.task4Ready) return;
-  G.state.task4Ready = true;
-  toast({ title: "DAYEON TASK", sub: "TASK-004", text: "새 업무 '결제 대참사'가 준비 중입니다. 등록되면 알림으로 안내됩니다.", app: "task" });
+function onFollowup4Done() { G.save(); }   // (FOLLOWUP4 는 TASK-004 배정 카드로 끝남)
+// TASK-004 승인 후: 엔딩 대화 → 배포 기록 단서 → TASK-005 예고
+function startFollowup5() {
+  if (G.state.followup5.started) return;
+  G.state.followup5.started = true;
   G.save();
+  playSequence(FOLLOWUP5, "ticketon", 0, G.state.followup5, onFollowup5Done);
+}
+function onFollowup5Done() {
+  if (!G.state.task5Ready) { G.state.task5Ready = true; G.save(); }
+  if (!G.live) setTimeout(startFollowup6, 1500);   // 솔로: 바로 TASK-005 사건으로 이어짐
+}
+// TASK-005 사건: 배포 파일 추궁 → 배정 카드
+function startFollowup6() {
+  if (G.state.followup6.started) return;
+  G.state.followup6.started = true;
+  G.save();
+  playSequence(FOLLOWUP6, "ticketon", 0, G.state.followup6, onFollowup6Done);
+}
+function onFollowup6Done() { G.save(); }
+// TASK-005 승인 후: 사건의 진실 → TASK-006 예고
+function startFollowup7() {
+  if (G.state.followup7.started) return;
+  G.state.followup7.started = true;
+  G.save();
+  playSequence(FOLLOWUP7, "ticketon", 0, G.state.followup7, onFollowup7Done);
+}
+function onFollowup7Done() {
+  if (!G.state.task6Ready) { G.state.task6Ready = true; G.save(); }
+  if (!G.live) setTimeout(startFollowup8, 1500);
+}
+// TASK-006 시작: 최후의 배포 → 배정 카드
+function startFollowup8() {
+  if (G.state.followup8.started) return;
+  G.state.followup8.started = true; G.save();
+  playSequence(FOLLOWUP8, "ticketon", 0, G.state.followup8, () => G.save());
+}
+// 배포 결과 공개 (공식 배포·배포 후 확인 뒤)
+function startFollowup9() {
+  if (G.state.followup9.started) return;
+  G.state.followup9.started = true; G.save();
+  playSequence(FOLLOWUP9, "ticketon", 0, G.state.followup9, onFollowup9Done);
+}
+function onFollowup9Done() { G.save(); if (!G.live) setTimeout(startFollowup10, 2000); }
+// 근무평가 진행
+function startFollowup10() {
+  if (G.state.followup10.started) return;
+  G.state.followup10.started = true; G.save();
+  playSequence(FOLLOWUP10, "ticketon", 0, G.state.followup10, onFollowup10Done);
+}
+function onFollowup10Done() {
+  G.state.evalReady = true; G.save();
+  if (G.live) return;
+  // 솔로: 활동 기록으로 평가서 초안을 만들고 바로 공개 (교사 확정 단계 생략)
+  const doc = computeEvalDraft(G.state, "신입 프로젝트팀");
+  doc.status = "PUBLISHED"; doc.verdict = "leave"; doc.publishedAt = Date.now();
+  G.state.evalDoc = doc; G.save();
+  toast({ title: "인사팀", sub: "근무평가서 발급", text: "이 팀의 신입사원 근무평가서가 발급되었습니다. DAYEON TASK › 근무평가서에서 확인하세요.", app: "task" });
+  if (G.state.currentApp === "task") renderTaskPage();
+  setTimeout(startFollowup11, 4000);
+}
+// 퇴근 승인
+function startFollowup11() {
+  if (G.state.followup11.started) return;
+  G.state.followup11.started = true; G.save();
+  playSequence(FOLLOWUP11, "ticketon", 0, G.state.followup11, onFollowup11Done);
+}
+function onFollowup11Done() {
+  G.state.leaveApproved = true; G.save();
+  if (typeof leaveFab === "function") leaveFab();
+  toast({ title: "DAYEON WORK", sub: "퇴근 승인", text: "오늘의 모든 업무가 종료되었습니다. [퇴근하기]를 눌러 퇴근하세요." });
 }
 
 // ---------- 시작 / 재개 (솔로 모드: private/data-private.js 의 시나리오를 자동 재생) ----------
@@ -489,6 +555,16 @@ function startSolo() {
     if (f3.started && !f3.done) playSequence(FOLLOWUP3.slice(f3.count), "ticketon", 1, f3);
     const f4 = G.state.followup4;
     if (f4.started && !f4.done) playSequence(FOLLOWUP4.slice(f4.count), "ticketon", 1, f4, onFollowup4Done);
+    const f5 = G.state.followup5;
+    if (f5.started && !f5.done) playSequence(FOLLOWUP5.slice(f5.count), "ticketon", 1, f5, onFollowup5Done);
+    const f6 = G.state.followup6;
+    if (f6.started && !f6.done) playSequence(FOLLOWUP6.slice(f6.count), "ticketon", 1, f6, onFollowup6Done);
+    const f7 = G.state.followup7;
+    if (f7.started && !f7.done) playSequence(FOLLOWUP7.slice(f7.count), "ticketon", 1, f7, onFollowup7Done);
+    [["followup8", "FOLLOWUP8", () => G.save()], ["followup9", "FOLLOWUP9", onFollowup9Done], ["followup10", "FOLLOWUP10", onFollowup10Done], ["followup11", "FOLLOWUP11", onFollowup11Done]].forEach(([k, name, cb]) => {
+      const f = G.state[k];
+      if (f && f.started && !f.done && typeof window[name] !== "undefined") playSequence(window[name].slice(f.count), "ticketon", 1, f, cb);
+    });
   }
 }
 
@@ -531,6 +607,15 @@ async function applyLiveEvent(ev, silent) {
       break;
     case "ending":
       if (!silent) toast({ title: ev.title || "엔딩", text: ev.text });
+      break;
+    case "leave":
+      G.state.leaveApproved = true;
+      if (typeof leaveFab === "function") leaveFab();
+      if (!silent) toast({ title: "DAYEON WORK", sub: "퇴근 승인", text: "오늘의 모든 업무가 종료되었습니다. [퇴근하기]를 눌러 퇴근하세요." });
+      break;
+    case "evalReady":
+      G.state.evalReady = true;
+      if (G.state.currentApp === "task") renderTaskPage();
       break;
   }
   G.save();

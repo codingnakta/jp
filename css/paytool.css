@@ -1,0 +1,99 @@
+/* ===================== TASK-004: 개발자 도구 Network 뷰어 / 결제 UI 미리보기 / QA ===================== */
+.dt-cnt { margin-left: auto; font-style: normal; font-size: 10px; background: #3c3c3c; border-radius: 8px; padding: 0 6px; color: #c5c5c5; }
+.dt-api { margin-top: 16px; }
+.dt-api div { margin-bottom: 8px; }
+.dt-api code { display: block; font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #9cdcfe; }
+.dt-api small { display: block; font-size: 11px; color: #8b8b8b; line-height: 1.4; }
+.dt-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+.dt-table th, .dt-table td { border: 1px solid #3c3c3c; padding: 6px 10px; text-align: left; }
+.dt-table th { background: #2a2d2e; color: #c5c5c5; }
+
+.nt { display: grid; grid-template-columns: 1fr 1fr; height: 100%; min-height: 0; font-family: var(--font); }
+.nt-list { border-right: 1px solid #3c3c3c; overflow: auto; }
+.nt-detail { overflow: auto; padding: 0 14px 14px; }
+.nt-head { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid #3c3c3c; font-size: 12px; color: #8b8b8b; position: sticky; top: 0; background: #1e1e1e; }
+.nt-head b { color: #fff; }
+.nt-head .dt-btn { margin-left: auto; height: 24px; font-size: 11px; }
+.nt-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
+.nt-table th { text-align: left; padding: 6px 10px; color: #8b8b8b; font-weight: 500; border-bottom: 1px solid #3c3c3c; }
+.nt-table td { padding: 6px 10px; border-bottom: 1px solid #2a2a2a; cursor: pointer; }
+.nt-table tr:hover td { background: #2a2d2e; }
+.nt-table tr.sel td { background: #37373d; }
+.nt-table tr.ok td:nth-child(5) { color: #4ade80; }
+.nt-table tr.bad td:nth-child(5) { color: #f48771; }
+.nt-table tr.warn td:nth-child(5) { color: #e8d44d; }
+.nt-empty { padding: 30px 16px; color: #8b8b8b; font-size: 13px; line-height: 1.5; }
+.nt-detail h5 { margin: 12px 0 4px; font-size: 11px; color: #8b8b8b; text-transform: uppercase; letter-spacing: .06em; }
+.nt-detail pre { margin: 0; background: #181818; border: 1px solid #3c3c3c; border-radius: 6px; padding: 8px 10px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #d4d4d4; white-space: pre-wrap; }
+.nt-detail pre.ok { border-color: #2f6f3e; } .nt-detail pre.bad { border-color: #8b3a3a; } .nt-detail pre.warn { border-color: #8a7a2a; }
+.nt-note { font-size: 12px; line-height: 1.5; color: #d4d4d4; margin: 6px 0 0; }
+.nt-note.dim { color: #8b8b8b; }
+
+/* 결제 UI 편집기 */
+.d-seg.vert { flex-direction: column; }
+.d-seg.vert button + button { border-left: 0; border-top: 1px solid #d1d5db; }
+.pp { background: #fff; border: 1px solid #d9dde3; border-radius: 10px; overflow: hidden; box-shadow: 0 6px 20px rgba(15,23,42,.08); font-family: var(--font); color: #1d1c1d; max-width: 420px; margin: 0 auto; }
+.pp-chrome { height: 26px; background: #eef0f3; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-bottom: 1px solid #d9dde3; }
+.pp-chrome span { width: 9px; height: 9px; border-radius: 50%; background: #cbd0d8; }
+.pp-chrome i { font-style: normal; font-size: 11px; color: #6b7280; margin-left: 8px; background: #fff; border-radius: 4px; padding: 2px 8px; flex: 1; }
+.pp-screen { position: relative; padding: 16px; background: #f4f5f7; min-height: 300px; }
+.pp-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.pp-title { font-size: 14px; }
+.pp-sum { display: flex; justify-content: space-between; color: #374151; }
+.pp-sum span { color: #6b7280; }
+.pp-sum.total { border-top: 1px solid #e5e7eb; padding-top: 8px; }
+.pp-sum.total b { color: #1a8cff; font-size: 16px; }
+.pp-terms { font-size: 12px; background: #f9fafb; border-radius: 6px; padding: 8px; color: #374151; }
+.pp-btn { height: 40px; border-radius: 8px; background: #1a8cff; color: #fff; font-weight: 800; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.pp-btn.dis { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+.pp-ghost { height: 34px; border-radius: 8px; background: #fff; border: 1.5px solid #1a8cff; color: #1a8cff; font-weight: 600; font-size: 13px; width: 100%; }
+.pp-hidden { font-size: 12px; color: #6b7280; text-align: center; padding: 10px; border: 1px dashed #d1d5db; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pp-spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+.pp-btn.dis .pp-spin, .pp-hidden .pp-spin { border-color: rgba(0,0,0,.15); border-top-color: #6b7280; }
+.pp-spin.big { width: 28px; height: 28px; border-width: 3px; border-color: rgba(0,0,0,.1); border-top-color: #1a8cff; margin-bottom: 10px; }
+.pp-overlay { position: absolute; inset: 0; background: rgba(255,255,255,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2; text-align: center; padding: 20px; border-radius: 0; }
+.pp-overlay b { font-size: 15px; }
+.pp-overlay small { color: #6b7280; margin-top: 4px; font-size: 12px; }
+.pp-res { text-align: center; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.pp-res > b { font-size: 16px; }
+.pp-ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 800; }
+.pp-ic.ok { background: #dcfce7; color: #16a34a; } .pp-ic.bad { background: #fee2e2; color: #dc2626; } .pp-ic.wait { background: #fef3c7; color: #d97706; font-size: 18px; }
+.pp-rc { width: 100%; background: #f9fafb; border-radius: 8px; padding: 6px 12px; text-align: left; }
+.pp-rc div { display: flex; justify-content: space-between; padding: 4px 0; }
+.pp-rc span { color: #6b7280; }
+.pp-reason { margin: 0; color: #b91c1c; font-size: 13px; }
+.pp-help { margin: 0; color: #374151; font-size: 12px; line-height: 1.5; }
+.pp-warn { color: #b45309; font-size: 11px; }
+.pp-cs { font-size: 11px; color: #6b7280; }
+.pp-modal { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+.pp-modal p { margin: 6px 0 10px; font-size: 13px; color: #374151; }
+
+/* TICKET ON 결제 화면 (TASK-004 모드) */
+.tk-overlay { position: absolute; inset: 0; background: rgba(255,255,255,.88); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; text-align: center; }
+.tk-overlay .tk-spin { width: 34px; height: 34px; border-width: 3px; margin-bottom: 12px; }
+.tk-overlay b { font-size: 18px; }
+.tk-overlay small { color: #6b7280; margin-top: 6px; }
+.tk-page { position: relative; }
+.tk-sent { font-size: 11px; color: #9ca3af; margin-top: 6px; text-align: center; }
+.tk-result .tk-reason { color: #b91c1c; font-weight: 600; margin: 0 0 6px; }
+.tk-result .tk-help { color: #374151; font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
+.tk-result .tk-cs { display: block; font-size: 12px; color: #6b7280; margin-top: 10px; }
+.tk-dupwarn { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; border-radius: 10px; padding: 12px 16px; font-size: 14px; margin-top: 12px; }
+.tt-scn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #d8dde8; }
+.tt-scn select { height: 26px; border-radius: 6px; border: 0; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-size: 12px; padding: 0 6px; }
+.tt-scn select option { color: #111; }
+
+/* QA 화면 (DAYEON TASK) */
+.t-qa-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e3e5e8; border-radius: 10px; overflow: hidden; font-size: 14px; }
+.t-qa-table th, .t-qa-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #eef0f2; vertical-align: top; }
+.t-qa-table th { font-size: 12px; color: #6b7280; background: #fafbfc; }
+.t-qa-table .pass { color: #1f8a4c; font-weight: 800; }
+.t-qa-table .fail { color: #d6334c; font-weight: 800; }
+.t-qa-table .hint { color: #6b7280; font-size: 13px; }
+.t-qa-sum { display: flex; align-items: center; gap: 14px; margin: 0 0 14px; }
+.t-qa-sum .big { font-size: 24px; font-weight: 800; }
+.t-qa-sum .big.ok { color: #1f8a4c; } .t-qa-sum .big.bad { color: #d6334c; }
+@media (max-width: 1100px) {
+  .nt { grid-template-columns: 1fr; grid-template-rows: minmax(0, 45%) minmax(0, 1fr); }
+  .nt-list { border-right: 0; border-bottom: 1px solid #3c3c3c; }
+}

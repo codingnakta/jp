@@ -136,7 +136,9 @@ function runCodeTest() {
 }
 
 // ---------- 렌더 ----------
+function devSet() { const t4 = G.state.task4; return (t4.started && !t4.done) || G.state.devView.set === 4 ? 4 : 3; }
 function renderDevtool() {
+  if (devSet() === 4 && typeof renderPayDevtool === "function") return renderPayDevtool();
   const s = T3();
   const dv = G.state.devView;
   if (!s.devtoolOpened) { s.devtoolOpened = true; G.save(); }
@@ -233,6 +235,7 @@ function addClue(src, text) {
 
 // ---------- 이벤트 ----------
 devAppEl.addEventListener("click", (e) => {
+  if (devSet() === 4) return;   // TASK-004 변형은 paytool.js 가 처리
   const t = (sel) => e.target.closest(sel);
   const dt = t("[data-dt]");
   if (dt) {

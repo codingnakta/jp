@@ -187,3 +187,33 @@ database.rules.json                보안 규칙 / js/firebase-config.example.js
 
 ## 교사 대시보드
 진행 가이드에 TASK-003 단계 8개 추가(배정 → 조사 시작 → 검토 → 해설 → 공식 수정 반영 → 종료 → 결제 테스트 대화 → 결제 중복 사건·TASK-004 예고). 학생 현황에 디버깅 열, 팀 답안에 재현 기록·단서·코드 수정·테스트 결과, 해설 탭에 TASK-003 정답. 시나리오 콘텐츠는 v2로 재등록 필요(자동 안내).
+
+---
+
+# TASK-004 《결제 대참사》 · TASK-005 《수상한 배포 기록》 · TASK-006 《퇴근 5분 전, 최후의 배포》 · 근무평가서/최종 엔딩
+
+## 추가된 파일
+- `js/paytool.js` + `css/paytool.css` — TASK-004: 가상 결제 엔진(PayEngine, 요청 기록·멱등성 키·시나리오 A/B/C/T), 개발자 도구 변형(payment.js 편집 5행~, Network 로그 뷰어, 구조 분석 기반 테스트 — eval 없음), 결제 UI 편집기(DAYEON DESIGN '결제 UI' 탭), QA 러너(5항목), TICKET ON 결제 분기(tryPay4/result4HTML)
+- `js/ops.js` + `css/ops.css` — DAYEON DEPLOY 앱(TASK-005/006): 공유 폴더 탐색기, Git 기록 뷰어, 배포 이력(CI/CD), QA 결과, 지난 대화, 배포 가이드, 증거 수집(addEvidence5), 타임라인 검증(checkTimeline5), 디자인 '변경 이력' 탭
+- `js/final.js` + `css/final.css` — TASK-006: 배포 후보 비교, 최종 QA(TICKET ON 실제 조작 → qa6Event → evalFinalQA), 배포 체크리스트·배포 요청·배포 로그 연출·배포 후 확인, 출시 승인 회의(renderMeeting6), 최종 검수 보고서(renderReport6), 학생용 근무평가서(renderEvalView, 인쇄 @media print), 퇴근하기 FAB, 최종 엔딩(showFinalEnding)
+- `js/eval.js` — 근무평가서 초안 계산(computeEvalDraft: 실제 기록만 반영, 근거 없으면 미평가) + A4 문서 렌더(evalDocHTML). chat.html·teacher.html 공용
+- `js/teacher-final.js` — 교사 대시보드 확장: TASK-006 가이드 단계(guideSteps6), 공식 배포 실행(applyRelease → public.release), 평가서 공개(publishEval), 퇴근 승인(approveLeave), 사원평가 탭(evalTab/편집/미리보기), TASK-006 보고서 본문·해설
+
+## 상태 (state.js)
+- `task4`: requests[](결제 엔진 로그), reproductions, clues, ui/uiApplied, code/codeFlags/codeOk, qa, report, review, done
+- `task5`: filesViewed, fileNotes, designHistoryViewed, commitsViewed, deploysViewed, evidence[], answersB, timeline{order, attempts, passed}, report(prod/staging/cause/why/prevent/evidenceIds)
+- `task6`: candidate, qaEvents(TICKET ON 조작 기록), qaObs(관찰), qa, meeting, release(솔로 배포), postCheckDone, report, review, done(=배포 후 확인 완료)
+- `followup4~11`, `task5Ready/task6Ready`, `evalReady/evalDoc/evalViewed`, `leaveApproved/leftWork/endingStage`, `opsView`
+- 승인(approveReport) 후 솔로 스토리: 4→FOLLOWUP5→6(자동) / 5→FOLLOWUP7→8(자동) / 6은 배포 후 확인 완료 → FOLLOWUP9→10(평가서 자동 발급)→11(퇴근 승인)
+
+## 라이브 공통 상태 (public) 추가
+- `officialService.payFixed/payUi` (TASK-004 공식 수정), `release {status deploying|done, build, by, startedAt}` (교사 공식 배포), `evalReady`, `eval {published, showTitles, titles}`, `leaveApproved`
+- 이벤트 타입 추가: `evalReady`, `leave`. 팀별 `teamData/{tid}/eval` (교사만 쓰기, 팀만 읽기 — rules 추가). 학생은 PUBLISHED 상태의 자기 팀 평가서만 수신
+- 교사 콘텐츠 `content/private` v3: FOLLOWUP4~11, TASK4/5/6_ANSWERS 포함 (teacher-app.js 는 TASK6_ANSWERS 가 없으면 예전 버전으로 판단)
+
+## 버전 일관성 (TASK-005/006)
+- v1.0.2 = b-1002-c91e (10.15, 디자인 v2, 사고 당시 운영) · v1.0.4 = b-1004-7f3a (10.18, 디자인 v4 + 예매/결제 수정 일부, 스테이징 QA 12/12) · v1.0.5 = b-1005-a2d8 (10.19, TASK-002~004 복구 전부, 최종 QA·승인) · v1.0.6 = b-1006-e51c (10.19 17:35, 김팀장 추가 수정, QA 없음)
+- TASK-005 타임라인 정답은 TASK5.timeline[].at 정렬로 검증(화면 미표시)
+
+## 테스트 방법 (솔로)
+`chat.html?reset=1&skip=1&fast=1` → 콘솔에서 `forceCompleteTask(1..3)` → followup3.done=true 후 결제 2회 → TASK-004 카드 → (각 미션 수행 또는 `forceCompleteTask(4)`) → 승인 → FOLLOWUP5/6 → TASK-005 → … → TASK-006 → 배포 요청(솔로는 2.5초 후 자동 승인) → 배포 후 확인 → 평가서 → 퇴근하기 → 엔딩. 숨은 교사 패널(Ctrl+Shift+T)에 TASK-004~006 완료 처리·공식 배포 실행 버튼 있음

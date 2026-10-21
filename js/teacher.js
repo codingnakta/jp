@@ -46,8 +46,28 @@ function currentMission() {
     if (t3.retest.passes < 2) return "TASK-003 · D 재테스트";
     return "TASK-003 · E 보고서 작성";
   }
-  if (!s.followup4.done) return "TASK-003 완료 · 결제 중복 재현 대기";
-  return "TASK-004 준비 완료";
+  const t4 = s.task4;
+  if (!t4.assigned) return "TASK-003 완료 · 결제 테스트 대기";
+  if (!t4.started) return "TASK-004 · 업무 확인/시작 대기";
+  if (!t4.done) {
+    if (t4.review.status === "pending") return "TASK-004 · 보고서 검토 대기 (승인 필요)";
+    if (!t4.reproductions.length) return "TASK-004 · A 결제 오류 재현";
+    if (!t4.uiApplied && !t4.codeOk) return "TASK-004 · B/C/D 조사·UI·코드";
+    if (!t4.qa || !t4.qa.allPass) return "TASK-004 · E QA 검증";
+    return "TASK-004 · 보고서 작성";
+  }
+  if (!s.followup5.done) return "TASK-004 완료 · 엔딩 대화 중";
+  const t5 = s.task5;
+  if (!t5.assigned) return "TASK-005 사건 진행 중";
+  if (!t5.started) return "TASK-005 · 업무 확인/시작 대기";
+  if (!t5.done) return t5.review.status === "pending" ? "TASK-005 · 보고서 검토 대기 (승인 필요)" : t5.timeline.passed ? "TASK-005 · 보고서 작성" : "TASK-005 · 조사 중";
+  if (!s.followup7.done) return "TASK-005 완료 · 엔딩 대화 중";
+  const t6 = s.task6;
+  if (!t6.assigned) return "TASK-006 사건 진행 중";
+  if (!t6.started) return "TASK-006 · 업무 확인/시작 대기";
+  if (!t6.done) return t6.review.status === "pending" ? "TASK-006 · 보고서 검토 대기 (승인 필요)" : t6.release && t6.release.status === "done" ? "TASK-006 · 배포 후 확인 대기" : t6.review.status === "approved" ? "TASK-006 · 배포 실행 대기" : "TASK-006 · 검수 중";
+  if (!s.leaveApproved) return "TASK-006 완료 · 엔딩·평가 진행 중";
+  return s.leftWork ? "퇴근 완료" : "퇴근 승인 · 퇴근하기 대기";
 }
 
 function renderTeacher() {
@@ -99,7 +119,22 @@ function tpStatus() {
         ${flag(s.task3.assigned, "TASK-003 배정")}
         ${flag(s.task3.codeFixed, "코드 수정 테스트 통과", `재테스트 ${s.task3.retest.passes}/2`)}
         ${flag(s.task3.done, "TASK-003 완료")}
-        ${flag(s.followup4.done, "결제 중복 재현 → TASK-004 예고")}
+        ${flag(s.task4.assigned, "TASK-004 배정")}
+        ${flag(s.task4.uiApplied, "결제 UI 적용")}
+        ${flag(s.task4.codeOk, "결제 코드 테스트 통과")}
+        ${flag(!!(s.task4.qa && s.task4.qa.allPass), "QA 전부 통과", s.task4.qa ? `${s.task4.qa.passed}/${s.task4.qa.total}` : "")}
+        ${flag(s.task4.done, "TASK-004 완료")}
+        ${flag(s.followup5.done, "엔딩 → TASK-005 예고")}
+        ${flag(s.task5.assigned, "TASK-005 배정")}
+        ${flag(!!s.task5.timeline.passed, "타임라인 검증 통과", s.task5.timeline.attempts ? `${s.task5.timeline.attempts}회` : "")}
+        ${flag(s.task5.done, "TASK-005 완료")}
+        ${flag(s.followup7.done, "사건의 진실 → TASK-006 예고")}
+        ${flag(s.task6.assigned, "TASK-006 배정")}
+        ${flag(!!(s.task6.qa && s.task6.qa.allPass), "최종 QA 전부 통과", s.task6.qa ? `${s.task6.qa.passed}/${s.task6.qa.total}` : "")}
+        ${flag(!!(s.task6.release && s.task6.release.status === "done"), "공식 배포 완료", s.task6.release ? s.task6.release.build || "" : "")}
+        ${flag(s.task6.done, "TASK-006 완료 (배포 후 확인)")}
+        ${flag(!!(s.evalDoc && s.evalDoc.status === "PUBLISHED"), "근무평가서 발급")}
+        ${flag(s.leaveApproved, "퇴근 승인")}
       </ul>
     </div>
     <div class="tp-sec">
@@ -116,6 +151,10 @@ function tpStatus() {
         <button data-tp="complete1" ${t1.done ? "disabled" : ""}>TASK-001 완료 처리</button>
         <button data-tp="complete2" ${!t1.done || t2.done ? "disabled" : ""}>TASK-002 완료 처리</button>
         <button data-tp="complete3" ${!t2.done || s.task3.done ? "disabled" : ""}>TASK-003 완료 처리</button>
+        <button data-tp="complete4" ${!s.task3.done || s.task4.done ? "disabled" : ""}>TASK-004 완료 처리</button>
+        <button data-tp="complete5" ${!s.task4.done || s.task5.done ? "disabled" : ""}>TASK-005 완료 처리</button>
+        <button data-tp="complete6" ${!s.task5.done || s.task6.done ? "disabled" : ""}>TASK-006 완료 처리 (배포 포함)</button>
+        <button data-tp="release" ${!(s.task6.release && s.task6.release.requested && s.task6.release.status === "none") ? "disabled" : ""}>공식 배포 실행 (요청 승인)</button>
         <button data-tp="reveal" ${!t2.started || t2.findingsRevealed ? "disabled" : ""}>검수 결과 공개</button>
         <button data-tp="checkP" ${!t2.started || t2.principlesChecked ? "disabled" : ""}>원칙 분석 공개</button>
         <button data-tp="repro3" ${!t2.done || s.followup3.started ? "disabled" : ""}>결제 오류 재현 대화 재생</button>
@@ -178,7 +217,7 @@ function tpData() {
 }
 
 function tpHints() {
-  const all = [...HINTS.map((h) => ({ ...h, task: "TASK-001" })), ...TASK2_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-002" })), ...TASK3_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-003" }))];
+  const all = [...HINTS.map((h) => ({ ...h, task: "TASK-001" })), ...TASK2_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-002" })), ...TASK3_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-003" })), ...TASK4_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-004" })), ...TASK5_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-005" })), ...TASK6_ANSWERS.hints.map((h) => ({ ...h, task: "TASK-006" }))];
   return `<div class="tp-sec"><h4>힌트 공개 <small>김팀장 DM으로 도착 · 질문형</small></h4>
     <ul class="tp-hints">${all.map((h) => `<li><span class="tp-step">${esc(h.task)}<br>${esc(h.step)}</span><span>${esc(h.text)}</span><button data-tp="hint" data-hint="${h.id}" ${G.state.hintsRevealed.includes(h.id) ? "disabled" : ""}>${G.state.hintsRevealed.includes(h.id) ? "공개됨" : "공개"}</button></li>`).join("")}</ul></div>`;
 }
@@ -206,6 +245,22 @@ function tpAnswers() {
       <p><b>원인:</b> ${esc(TASK3_ANSWERS.cause)}</p>
       <p><b>수정:</b> ${esc(TASK3_ANSWERS.fix)}</p>
       <p><b>남겨야 할 오류:</b> ${esc(TASK3_ANSWERS.remaining)}</p>
+    </div>
+    <div class="tp-sec">
+      <h4>TASK-004 · 정답</h4>
+      <p><b>원인:</b> ${esc(TASK4_ANSWERS.cause)}</p>
+      <p><b>수정:</b> ${esc(TASK4_ANSWERS.fix)}</p>
+      <p><b>다음 단서:</b> ${esc(TASK4_ANSWERS.remaining)}</p>
+    </div>
+    <div class="tp-sec">
+      <h4>TASK-005 · 정답</h4>
+      <p><b>버전:</b> 운영 ${esc(TASK5_ANSWERS.versions.production)} / 테스트 ${esc(TASK5_ANSWERS.versions.staging)}</p>
+      <p><b>원인:</b> ${esc(TASK5_ANSWERS.cause)}</p>
+      <p><b>과정:</b> ${esc(TASK5_ANSWERS.process)}</p>
+    </div>
+    <div class="tp-sec">
+      <h4>TASK-006 · 정답</h4>
+      <p><b>배포할 빌드:</b> ${esc(TASK6_ANSWERS.correct)} — ${esc(TASK6_ANSWERS.why)}</p>
     </div>`;
 }
 
@@ -231,6 +286,10 @@ teacherRoot.addEventListener("click", (e) => {
   if (a === "complete1") { forceCompleteTask(1); }
   if (a === "complete2") { forceCompleteTask(2); }
   if (a === "complete3") { forceCompleteTask(3); }
+  if (a === "complete4") { forceCompleteTask(4); }
+  if (a === "complete5") { forceCompleteTask(5); }
+  if (a === "complete6") { forceCompleteTask(6); if (!G.state.followup9.started) startFollowup9(); }
+  if (a === "release") { startOfficialRelease(G.state.task6.release.build); }
   if (a === "reveal") { s.task2.findingsRevealed = true; G.save(); if (s.currentApp === "design") renderDesign(); }
   if (a === "checkP") { s.task2.principlesChecked = true; G.save(); if (s.currentApp === "design") renderDesign(); }
   if (a === "repro3") { if (typeof startFollowup3 === "function") { showApp("work"); openRoom("ticketon"); startFollowup3(); } }
@@ -258,7 +317,7 @@ teacherRoot.addEventListener("click", (e) => {
   if (a === "return") { returnReport(Number(b.dataset.no), TP.note.trim()); TP.note = ""; }
   if (a === "reset") { if (confirm("저장된 게임 진행을 모두 지우고 로그인 화면으로 돌아갑니다. 계속할까요?")) G.reset(); return; }
   if (a === "hint") {
-    const h = [...HINTS, ...TASK2_ANSWERS.hints, ...TASK3_ANSWERS.hints].find((x) => x.id === b.dataset.hint);
+    const h = [...HINTS, ...TASK2_ANSWERS.hints, ...TASK3_ANSWERS.hints, ...TASK4_ANSWERS.hints, ...TASK5_ANSWERS.hints, ...TASK6_ANSWERS.hints].find((x) => x.id === b.dataset.hint);
     if (h && !s.hintsRevealed.includes(h.id)) {
       s.hintsRevealed.push(h.id);
       appendMessage("dm-kim", { from: "kim", text: h.text }, { notify: true });

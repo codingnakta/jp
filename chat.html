@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="css/ticket.css" />
   <link rel="stylesheet" href="css/design.css" />
   <link rel="stylesheet" href="css/devtool.css" />
+  <link rel="stylesheet" href="css/paytool.css" />
+  <link rel="stylesheet" href="css/ops.css" />
+  <link rel="stylesheet" href="css/final.css" />
   <link rel="stylesheet" href="css/teacher.css" />
   <link rel="stylesheet" href="css/student.css" />
 </head>
@@ -158,6 +161,7 @@
         <button class="t-nav is-active" data-tnav="mine"><svg viewBox="0 0 24 24"><path d="M4 5h16v2H4V5Zm0 6h16v2H4v-2Zm0 6h10v2H4v-2Z"/></svg>나의 업무 <b class="t-nav-n" id="t-nav-n"></b></button>
         <button class="t-nav" data-tnav="team"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-2.3 0-7 1.2-7 3.5V19h8v-2.5c0-1 .4-1.9 1.1-2.6A11 11 0 0 0 8 13Zm8 0c-.3 0-.6 0-1 .1 1.2.9 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5Z"/></svg>팀 업무</button>
         <button class="t-nav" data-tnav="cal"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm-1 8v10h12V10H6Z"/></svg>캘린더</button>
+        <button class="t-nav" data-tnav="eval" id="t-nav-eval"><svg viewBox="0 0 24 24"><path d="M12 2 9.5 8.5 2.5 9l5.3 4.6L6.2 21 12 17.3 17.8 21l-1.6-7.4L21.5 9l-7-.5L12 2Z"/></svg>근무평가서</button>
         <button class="t-nav" data-tnav="report"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5V3Zm2 8v2h10v-2H7Zm0 4v2h7v-2H7Z"/></svg>보고서</button>
       </aside>
       <main class="t-main" id="task-content"></main>
@@ -171,6 +175,7 @@
     <button class="app-menu-item" data-app="task"><span class="app-dot task">T</span><span><b>DAYEON TASK</b><small>업무 관리 시스템</small></span><i class="check"></i></button>
     <button class="app-menu-item" data-app="ticket" hidden><span class="app-dot ticket">ON</span><span><b>TICKET ON</b><small>공연 예매 테스트 사이트</small></span><i class="check"></i></button>
     <button class="app-menu-item" data-app="design" hidden><span class="app-dot design">D</span><span><b>DAYEON DESIGN</b><small>디자인 검수 뷰어</small></span><i class="check"></i></button>
+    <button class="app-menu-item" data-app="ops" hidden><span class="app-dot ops">▲</span><span><b>DAYEON DEPLOY</b><small>배포 · 형상 관리</small></span><i class="check"></i></button>
     <button class="app-menu-item" data-app="dev" hidden><span class="app-dot dev">{ }</span><span><b>DAYEON DEV TOOLS</b><small>프런트엔드 디버깅 도구</small></span><i class="check"></i></button>
   </div>
 
@@ -179,6 +184,9 @@
 
   <!-- DAYEON DESIGN (디자인 검수 뷰어) — design.js 가 내용을 그림 -->
   <div class="dapp" id="design-app" hidden></div>
+
+  <!-- DAYEON DEPLOY (배포·형상 관리, TASK-005/006) — ops.js 가 내용을 그림 -->
+  <div class="opapp" id="ops-app" hidden></div>
 
   <!-- TICKET ON (테스트 사이트) — ticket.js 가 내용을 그림 -->
   <div class="tkapp" id="ticket-app" hidden></div>
@@ -202,6 +210,10 @@
   <script src="js/ticket.js"></script>
   <script src="js/design.js"></script>
   <script src="js/devtool.js"></script>
+  <script src="js/paytool.js"></script>
+  <script src="js/ops.js"></script>
+  <script src="js/eval.js"></script>
+  <script src="js/final.js"></script>
   <script src="js/teacher.js"></script>
   <script src="js/live.js"></script>
 </body>

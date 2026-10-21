@@ -12,18 +12,20 @@ function renderDesign() {
   const dv = DV();
   const file = TASK2.files[dv.version] || TASK2.files.v2;
   const tabs = [["review", "검수"], ["principles", "원칙 분석"], ["edit", "디자인 수정"]];
+  if (G.state.task4 && G.state.task4.started) tabs.push(["pay", "결제 UI"]);
+  if (G.state.task5 && G.state.task5.started) tabs.push(["history", "변경 이력"]);
   designAppEl.innerHTML = `
     <header class="d-head">
       <button class="d-back" data-d="back">← 업무로 돌아가기</button>
       <div class="d-file">
         <span class="d-file-icon">Fig</span>
-        <div><b>${esc(dv.tab === "edit" ? "TICKETON_Design_v4.fig · 수정안" : file.name)}</b><small>${esc(dv.tab === "edit" ? "운영 반영용 수정안 · 담당 이서연" : `${file.version} · 수정 ${file.date} · ${file.author}`)}</small></div>
+        <div><b>${esc(dv.tab === "history" ? "TICKETON_Design · 변경 이력" : dv.tab === "pay" ? "payment_ui.fig · 결제 상태별 UI" : dv.tab === "edit" ? "TICKETON_Design_v4.fig · 수정안" : file.name)}</b><small>${esc(dv.tab === "history" ? "TASK-005 · v2 / v3 / v4 수정·전달 기록" : dv.tab === "pay" ? "TASK-004 · 진행 전 / 처리 중 / 완료·실패 · 담당 이서연" : dv.tab === "edit" ? "운영 반영용 수정안 · 담당 이서연" : `${file.version} · 수정 ${file.date} · ${file.author}`)}</small></div>
       </div>
       <nav class="d-tabs">${tabs.map(([k, l]) => `<button class="${dv.tab === k ? "is-active" : ""}" data-dtab="${k}">${l}</button>`).join("")}</nav>
       <div class="d-head-right"><span class="d-count">검수 목록 <b>${T2().findings.length}</b></span></div>
     </header>
     <div class="d-body">
-      ${dv.tab === "review" ? reviewTabHTML() : dv.tab === "principles" ? principlesTabHTML() : editTabHTML()}
+      ${dv.tab === "history" && typeof designHistoryTabHTML === "function" ? designHistoryTabHTML() : dv.tab === "pay" && typeof payUiTabHTML === "function" ? payUiTabHTML() : dv.tab === "review" ? reviewTabHTML() : dv.tab === "principles" ? principlesTabHTML() : editTabHTML()}
     </div>`;
 }
 

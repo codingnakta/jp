@@ -20,7 +20,41 @@ function defaultState() {
     followup: { started: false, count: 0, done: false },   // TASK-001 보고 후 → TASK-002 배정 대화
     followup2: { started: false, count: 0, done: false },  // TASK-002 완료 후 1부
     followup3: { started: false, count: 0, done: false },  // TASK-003 승인 후 (결제 테스트 제안)
-    followup4: { started: false, count: 0, done: false },  // 결제 중복 사건 → TASK-004 예고
+    followup4: { started: false, count: 0, done: false },  // 결제 대참사 사건 → TASK-004 배정
+    followup5: { started: false, count: 0, done: false },  // TASK-004 엔딩 → TASK-005 예고
+    task5Ready: false,
+    followup6: { started: false, count: 0, done: false },  // TASK-005 사건 → TASK-005 배정
+    followup7: { started: false, count: 0, done: false },  // TASK-005 엔딩 → TASK-006 예고
+    task6Ready: false,
+    followup8: { started: false, count: 0, done: false },  // TASK-006 사건 → 배정
+    followup9: { started: false, count: 0, done: false },  // 배포 결과 공개
+    followup10: { started: false, count: 0, done: false }, // 근무평가 진행
+    followup11: { started: false, count: 0, done: false }, // 퇴근 승인
+    task6: {                  // TASK-006
+      assigned: false, acked: false, started: false,
+      candidate: null, candEdit: null,                 // 배포 후보 선택 기록 {id, reason, evidence, extra, at}
+      qaEvents: {}, qaObs: {}, qa: null,               // TICKET ON 조작 기록 · 관찰 기록 · 최종 QA 결과
+      meeting: null,                                   // 출시 승인 회의 합의 {decision, reason, evidence, risks, response}
+      release: null,                                   // 배포 요청/진행 {requested, build, status, startedAt} (솔로)
+      postCheckDone: false, postCheckAt: null,
+      reportDraft: null, report: null, reportSubmitted: false,
+      review: { status: "none", note: "" },
+      done: false,
+    },
+    evalReady: false, evalDoc: null, evalViewed: false,  // 근무평가서
+    leaveApproved: false, leftWork: false, endingStage: null,
+    task5: {                  // TASK-005
+      assigned: false, acked: false, started: false,
+      filesViewed: [], fileNotes: [],                 // 공유 폴더 조사 기록 [{id, file, mismatch, reason, time}]
+      designHistoryViewed: false, commitsViewed: [], deploysViewed: [], qaViewed: false, chatViewed: false, guideViewed: false,
+      evidence: [],                                   // [{id, src, text, time}]
+      answersB: {},                                   // MISSION B 질문 답
+      timeline: { order: null, attempts: 0, passed: false, lastResult: null, checkedAt: null },
+      reportDraft: null, report: null, reportSubmitted: false,
+      review: { status: "none", note: "" },
+      done: false,
+    },
+    opsView: { view: "deploy", sel: null, folder: "root" },
     nextTaskReady: false,     // (구버전 호환)
     task3Ready: false,        // (구버전 호환)
     task4Ready: false,        // TASK-004 준비 알림 완료
@@ -68,6 +102,19 @@ function defaultState() {
       codeFixed: false,         // 테스트 통과 → 이 팀의 TICKET ON 테스트 환경에 반영
       fixedCode: null,
       retest: { count: 0, passes: 0 },   // 수정 후 TICKET ON 재테스트
+      reportDraft: null, report: null, reportSubmitted: false,
+      review: { status: "none", note: "" },
+      done: false,
+    },
+    task4: {                  // TASK-004
+      assigned: false, acked: false, started: false,
+      reproductions: [],        // 오류 재현 기록 [{id, screen, screenLabel, action, found, expected, evidence, time}]
+      requests: [], reqSeq: 0, engine: null,   // 가상 결제 엔진 요청 기록 (팀별)
+      logViewed: false, devtoolOpened: false,
+      clues: [],
+      ui: null, uiReviewed: {}, uiApplied: false, uiAppliedAt: null,   // 결제 UI 수정안 (팀 테스트 환경)
+      code: null, codeTested: false, testRuns: 0, testResult: null, codeFlags: null, codeOk: false, fixedCode: null,
+      qa: null,
       reportDraft: null, report: null, reportSubmitted: false,
       review: { status: "none", note: "" },
       done: false,
@@ -158,6 +205,13 @@ function migrate(st) {
   if (!st.task2.review) st.task2.review = { status: "none", note: "" };
   if (!st.task3.review) st.task3.review = { status: "none", note: "" };
   if (!st.task3.retest) st.task3.retest = { count: 0, passes: 0 };
+  if (!st.task4.review) st.task4.review = { status: "none", note: "" };
+  if (!Array.isArray(st.task4.requests)) st.task4.requests = [];
+  if (!st.task5.review) st.task5.review = { status: "none", note: "" };
+  if (!st.task5.timeline) st.task5.timeline = { order: null, attempts: 0, passed: false, lastResult: null, checkedAt: null };
+  if (!st.task6.review) st.task6.review = { status: "none", note: "" };
+  if (!st.task6.qaEvents) st.task6.qaEvents = {};
+  if (!st.task6.qaObs) st.task6.qaObs = {};
 }
 
 function deepMerge(base, over) {

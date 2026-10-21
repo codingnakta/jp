@@ -75,6 +75,9 @@
             },
             "review": {
               ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
+            },
+            "eval": {
+              ".write": "auth != null && root.child('teachers').child(auth.uid).val() === true"
             }
           }
         }

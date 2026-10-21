@@ -28,7 +28,9 @@ function showApp(name) {
   ticketAppEl.hidden = name !== "ticket";
   designAppEl.hidden = name !== "design";
   devAppEl.hidden = name !== "dev";
-  document.title = { task: "DAYEON TASK", ticket: "TICKET ON", design: "DAYEON DESIGN", dev: "DAYEON DEV TOOLS" }[name] || WORKSPACE.name;
+  const opsEl = document.getElementById("ops-app"); if (opsEl) opsEl.hidden = name !== "ops";
+  document.title = { task: "DAYEON TASK", ticket: "TICKET ON", design: "DAYEON DESIGN", dev: "DAYEON DEV TOOLS", ops: "DAYEON DEPLOY" }[name] || WORKSPACE.name;
+  if (name === "ops" && typeof renderOps === "function") renderOps();
   if (name === "task") renderTaskPage();
   if (name === "ticket") {
     if (!G.state.task.ticketVisited) G.state.task.ticketVisited = true;
@@ -49,6 +51,7 @@ function openAppMenu(anchor) {
     if (b.dataset.app === "ticket") b.hidden = !G.state.task.started;
     if (b.dataset.app === "design") b.hidden = !G.state.task2.started;
     if (b.dataset.app === "dev") b.hidden = !G.state.task3.started;
+    if (b.dataset.app === "ops") b.hidden = !((G.state.task5 && G.state.task5.started) || (G.state.task6 && G.state.task6.started));
   });
 }
 function closeAppMenu() { appMenu.hidden = true; }
@@ -71,7 +74,7 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAppMenu(); });
 
 // ---------- 상태 헬퍼 ----------
-const TS = (no = 1) => (no === 3 ? G.state.task3 : no === 2 ? G.state.task2 : G.state.task);
+const TS = (no = 1) => (no === 6 ? G.state.task6 : no === 5 ? G.state.task5 : no === 4 ? G.state.task4 : no === 3 ? G.state.task3 : no === 2 ? G.state.task2 : G.state.task);
 function taskStatus(t) {
   const s = TS(t.no);
   if (!s) return t.status;
@@ -84,7 +87,7 @@ function taskStatus(t) {
 const STATUS_CLS = { "진행 전": "todo", "진행 중": "doing", "완료": "done", "준비 중": "wait", "검토 대기": "wait", "보완 요청": "todo" };
 function statusHTML(st) { return `<span class="t-status ${STATUS_CLS[st] || "todo"}">${esc(st)}</span>`; }
 function visibleTasks() {
-  return tasks.filter((t) => t.no === 1 || (t.no === 2 && G.state.task2.assigned) || (t.no === 3 && G.state.task3.assigned));
+  return tasks.filter((t) => t.no === 1 || (t.no === 2 && G.state.task2.assigned) || (t.no === 3 && G.state.task3.assigned) || (t.no === 4 && G.state.task4.assigned) || (t.no === 5 && G.state.task5.assigned) || (t.no === 6 && G.state.task6 && G.state.task6.assigned));
 }
 
 function stepState1() {
@@ -94,6 +97,21 @@ function stepState1() {
 function stepState2() {
   const s = TS(2);
   return { a: s.findings.length >= 1, b: s.principlesChecked, c: s.designApplied, d: s.reportSubmitted };
+}
+function stepState6() {
+  const s = TS(6); const q = s.qa; const m = s.meeting || {};
+  const rel = typeof releaseState === "function" ? releaseState() : { status: "none" };
+  const released = rel.status === "done" || (typeof releaseDone === "function" && releaseDone());
+  return { a: !!(s.candidate && s.candidate.id), b: !!(q && q.run === q.total), c: !!(m.decision && (m.reason || "").trim()), d: s.reportSubmitted, e: released, f: s.postCheckDone };
+}
+function stepState5() {
+  const s = TS(5);
+  const bDone = s.designHistoryViewed && s.commitsViewed.length >= 1 && TASK5.questionsB.every((q) => (s.answersB[q.id] || "").trim());
+  return { a: s.fileNotes.length >= 1, b: bDone, c: s.deploysViewed.length >= 1 && s.evidence.length >= 1, d: !!s.timeline.passed, e: s.reportSubmitted };
+}
+function stepState4() {
+  const s = TS(4);
+  return { a: s.reproductions.length >= 1, b: s.logViewed && s.clues.length >= 1, c: s.uiApplied, d: !!s.codeOk, e: !!s.qa, f: s.reportSubmitted };
 }
 function stepState3() {
   const s = TS(3);
@@ -115,7 +133,13 @@ function renderTaskPage() {
   if (view === "detail" && t) renderTaskDetail(t);
   else if (view === "inquiries" && t) renderInquiries(t);
   else if (view === "records" && t) renderRecords(t);
-  else if (view === "report" && t) (t.no === 3 ? renderReport3(t) : t.no === 2 ? renderReport2(t) : renderReport1(t));
+  else if (view === "qa" && t) renderQA(t);
+  else if (view === "timeline" && t) renderTimeline5(t);
+  else if (view === "meeting" && t) renderMeeting6(t);
+  else if (view === "eval") renderEvalView();
+  else if (view === "qb" && t) renderQuestionsB(t);
+  else if (view === "evidence" && t) renderEvidence5(t);
+  else if (view === "report" && t) (t.no === 6 ? renderReport6(t) : t.no === 5 ? renderReport5(t) : t.no === 4 ? renderReport4(t) : t.no === 3 ? renderReport3(t) : t.no === 2 ? renderReport2(t) : renderReport1(t));
   else if (view === "guide" && t) renderGuide(t);
   else renderTaskList();
 }
@@ -131,8 +155,10 @@ function renderTaskList() {
       <td>${esc(t.due)}</td>
       <td>${esc(t.from)}</td>
     </tr>`).join("");
-  const next = G.state.task4Ready
-    ? `<tr class="row muted"><td class="code">TASK-004</td><td class="ttl">결제 대참사 (등록 대기 중)</td><td>${statusHTML("준비 중")}</td><td>-</td><td>김팀장</td></tr>`
+  const next = G.state.task6Ready && !(G.state.task6 && G.state.task6.assigned)
+    ? `<tr class="row muted"><td class="code">TASK-006</td><td class="ttl">퇴근 5분 전, 최후의 배포 (등록 대기 중)</td><td>${statusHTML("준비 중")}</td><td>-</td><td>김팀장</td></tr>`
+    : G.state.task5Ready && !G.state.task5.assigned
+    ? `<tr class="row muted"><td class="code">TASK-005</td><td class="ttl">수상한 배포 기록 (등록 대기 중)</td><td>${statusHTML("준비 중")}</td><td>-</td><td>김팀장</td></tr>`
     : "";
   taskContent.innerHTML = `<div class="t-page">
     <h1 class="t-page-title">나의 업무</h1>
@@ -165,7 +191,7 @@ function renderTaskDetail(t) {
   const st = taskStatus(t);
   const s = TS(t.no);
   const files = t.attachments.map((a) => `
-    <div class="t-file ${a.type === "locked" ? "locked" : ""}" data-attach="${esc(a.type)}" data-version="${esc(a.version || "")}" data-file="${esc(a.file || "")}" title="${a.type === "locked" ? "권한이 없습니다" : ""}">
+    <div class="t-file ${a.type === "locked" ? "locked" : ""}" data-attach="${esc(a.type)}" data-version="${esc(a.version || "")}" data-file="${esc(a.file || "")}" data-doc="${esc(a.doc || "")}" title="${a.type === "locked" ? "권한이 없습니다" : ""}">
       <span>${esc(a.name)}${a.meta ? `<small class="t-file-meta">${esc(a.meta)}</small>` : ""}</span>${ICON[a.type === "locked" ? "locked" : "link"]}
     </div>`).join("");
 
@@ -190,6 +216,84 @@ function renderTaskDetail(t) {
         ${stepLI(3, p.s3, p.s1 && p.s2, "조사 보고서 제출",
             s.reportSubmitted ? `제출 완료 · ${esc(s.report?.submittedAt || "")} · ${esc(st)}` : `문제 발생 단계와 확인한 문제, 근거, 추가 확인 사항을 정리해 김팀장에게 제출합니다.`,
             `<button class="btn ${p.s1 && p.s2 && !p.s3 ? "primary" : ""}" data-open-report>${s.reportSubmitted ? "보고서 보기" : "조사 보고서 작성"}</button>`)}
+      </ol>
+    </div>`;
+  } else if (t.no === 6) {
+    const p = stepState6();
+    const doneN = [p.a, p.b, p.c, p.d, p.e, p.f].filter(Boolean).length;
+    const q = s.qa; const m = s.meeting || {};
+    bottom = `${reviewBanner(s)}<div class="t-progress">
+      <div class="t-progress-head"><h3>최종 배포 검수 현황</h3><span>${doneN}/6 완료</span></div>
+      <ol class="t-steps">
+        ${stepLI("A", p.a, true, "MISSION A · 어떤 버전을 배포할 것인가?",
+            `DAYEON DEPLOY에서 배포 후보 네 개의 빌드 정보·릴리스 노트·QA·승인 기록을 비교하고 배포 후보를 선택해 이유를 기록합니다. <em>${s.candidate && s.candidate.id ? "선택: " + esc(s.candidate.id) : "미선택"}</em>`,
+            `<button class="btn ${p.a ? "" : "primary"}" data-open-ops="candidates">배포 후보 보기</button>`)}
+        ${stepLI("B", p.b, p.a, "MISSION B · 최종 QA 검증",
+            `TICKET ON을 실제로 조작하며 QA-001~006을 실행합니다. 디자인 항목은 관찰 기록, 기능 항목은 조작 결과로 자동 판정됩니다. <em>${q ? `${q.run}/${q.total} 실행 · ${q.passed} PASS` : "미실행"}</em>`,
+            `<span class="t-btns"><button class="btn ${p.a && !p.b ? "primary" : ""}" data-open-ops="finalqa">최종 QA</button><button class="btn" data-open-ticket>TICKET ON</button></span>`)}
+        ${stepLI("C", p.c, p.b, "MISSION C · 출시 승인 회의",
+            `QA 결과와 빌드 기록을 보고 출시 가능 여부를 팀이 판단하고 합의 보고서를 작성합니다. <em>${m.decision ? (m.decision === "approve" ? "출시 승인" : "출시 보류") : "합의 전"}</em>`,
+            `<button class="btn ${p.b && !p.c ? "primary" : ""}" data-open-meeting>출시 검토 회의</button>`)}
+        ${stepLI("D", p.d, p.c, "출시 판단 보고서 제출 · 팀장 승인",
+            s.reportSubmitted ? `제출 완료 · ${esc(s.report?.submittedAt || "")} · ${esc(st)}` : `후보 선택·QA 결과·회의 합의가 자동 첨부된 보고서를 제출합니다. 팀장(교사) 승인 후 배포할 수 있습니다.`,
+            `<button class="btn ${p.c && !p.d ? "primary" : ""}" data-open-report>${s.reportSubmitted ? "보고서 보기" : "보고서 제출"}</button>`)}
+        ${stepLI("E", p.e, s.review.status === "approved", "MISSION D · 배포 실행",
+            `배포 전 체크리스트(실제 기록 자동 반영)를 확인하고 [운영 환경에 배포하기]로 배포를 요청합니다. 실제 배포는 팀장(교사) 승인으로 실행됩니다. <em>${p.e ? "배포 완료" : s.release && s.release.requested ? "배포 요청됨 · 승인 대기" : s.review.status === "approved" ? "배포 가능" : "보고서 승인 후"}</em>`,
+            `<button class="btn ${s.review.status === "approved" && !p.e ? "primary" : ""}" data-open-ops="release">배포 실행</button>`)}
+        ${stepLI("F", p.f, p.e, "FINAL · 배포 후 운영 상태 확인",
+            `배포 성공 메시지 이후 운영 버전·서비스·예매·결제·오류 로그·헬스 체크를 확인하고 '배포 후 확인 완료'를 보고합니다. <em>${p.f ? "확인 완료 " + esc(s.postCheckAt || "") : "-"}</em>`,
+            `<button class="btn ${p.e && !p.f ? "primary" : ""}" data-open-ops="release">운영 상태 확인</button>`)}
+      </ol>
+    </div>`;
+  } else if (t.no === 5) {
+    const p = stepState5();
+    const doneN = [p.a, p.b, p.c, p.d, p.e].filter(Boolean).length;
+    const tl = s.timeline;
+    bottom = `${reviewBanner(s)}<div class="t-progress">
+      <div class="t-progress-head"><h3>사고 조사 현황</h3><span>${doneN}/5 완료</span></div>
+      <ol class="t-steps">
+        ${stepLI("A", p.a, true, "MISSION A · 수상한 프로젝트 공유 폴더",
+            `공유 드라이브의 파일을 열어 이름·폴더와 실제 내용(버전·빌드 ID·생성 시각)을 비교하고 이상한 점을 기록합니다. <em>열람 ${s.filesViewed.length}/${TASK5.files.length} · 기록 ${s.fileNotes.length}건</em>`,
+            `<button class="btn ${p.a ? "" : "primary"}" data-open-ops="files">공유 폴더 열기</button>`)}
+        ${stepLI("B", p.b, p.a, "MISSION B · 디자인 변경 이력과 Git 기록",
+            `디자인 v2→v4 변경 이력과 개발팀 커밋을 확인하고 조사 질문 4개에 답합니다. <em>디자인 이력 ${s.designHistoryViewed ? "확인" : "-"} · 커밋 ${s.commitsViewed.length}/${TASK5.commits.length} · 답변 ${TASK5.questionsB.filter((q) => (s.answersB[q.id] || "").trim()).length}/4</em>`,
+            `<span class="t-btns"><button class="btn" data-open-design="history">디자인 변경 이력</button><button class="btn" data-open-ops="git">Git 기록</button><button class="btn ${p.a && !p.b ? "primary" : ""}" data-open-qb>조사 질문 답하기</button></span>`)}
+        ${stepLI("C", p.c, p.b, "MISSION C · 배포 기록 조사",
+            `DAYEON DEPLOY에서 테스트·운영 환경의 버전과 배포 로그를 비교하고, QA 결과·지난 대화와 대조해 증거를 모읍니다. <em>배포 ${s.deploysViewed.length}/${TASK5.deploys.length} · QA ${s.qaViewed ? "확인" : "-"} · 대화 ${s.chatViewed ? "확인" : "-"} · 증거 ${s.evidence.length}건</em>`,
+            `<span class="t-btns"><button class="btn ${p.b && !p.c ? "primary" : ""}" data-open-ops="deploy">배포 이력 열기</button><button class="btn" data-open-evidence>증거 목록</button></span>`)}
+        ${stepLI("D", p.d, p.c, "MISSION D · 사건 타임라인 재구성",
+            `조사한 기록을 바탕으로 여섯 사건을 시간순으로 배치하고 검증합니다. <em>${tl.passed ? "검증 통과" : tl.attempts ? `검증 ${tl.attempts}회 · 불일치` : "미작성"}</em>`,
+            `<button class="btn ${p.c && !p.d ? "primary" : ""}" data-open-timeline>타임라인 열기</button>`)}
+        ${stepLI("E", p.e, p.d, "조사 결과 보고서",
+            s.reportSubmitted ? `제출 완료 · ${esc(s.report?.submittedAt || "")} · ${esc(st)}` : `확인된 버전 불일치, 사건 발생 과정(타임라인 자동 첨부), 직접 원인, 예방하지 못한 이유, 재발 방지 대책, 참고 증거를 정리해 제출합니다.`,
+            `<button class="btn ${p.d && !p.e ? "primary" : ""}" data-open-report>${s.reportSubmitted ? "보고서 보기" : "조사 보고서 작성"}</button>`)}
+      </ol>
+    </div>`;
+  } else if (t.no === 4) {
+    const p = stepState4();
+    const doneN = [p.a, p.b, p.c, p.d, p.e, p.f].filter(Boolean).length;
+    const q = s.qa;
+    bottom = `${reviewBanner(s)}<div class="t-progress">
+      <div class="t-progress-head"><h3>결제 오류 대응 현황</h3><span>${doneN}/6 완료</span></div>
+      <ol class="t-steps">
+        ${stepLI("A", p.a, true, "MISSION A · 결제 오류 재현",
+            `TICKET ON 결제 확인 화면에서 시나리오 A·B·C로 테스트 결제를 진행하고 '오류 재현 기록'에 동작·현상·예상·증거를 적습니다. <em>기록 ${s.reproductions.length}건 · 요청 ${s.requests.length}건</em>`,
+            `<span class="t-btns"><button class="btn ${p.a ? "" : "primary"}" data-open-pay-ticket>TICKET ON 결제 테스트</button>${s.reproductions.length ? `<button class="btn" data-open-records>기록 보기</button>` : ""}</span>`)}
+        ${stepLI("B", p.b, p.a, "MISSION B · 결제 요청 로그 조사",
+            `개발자 도구의 payment_network.log 에서 요청·응답을 비교하고, 반복된 요청과 실제 결과를 조사 기록에 담습니다. <em>단서 ${s.clues.length}건</em>`,
+            `<button class="btn ${p.a && !p.b ? "primary" : ""}" data-open-pay="net">요청 로그 열기</button>`)}
+        ${stepLI("C", p.c, p.b, "MISSION C · 사용자 경험 개선",
+            `결제 UI 편집기에서 진행 전·처리 중·완료·실패·확인 필요 상태의 안내를 고르고 미리보기로 확인한 뒤 적용합니다. <em>${s.uiApplied ? "적용됨 " + esc(s.uiAppliedAt || "") : "미적용"}</em>`,
+            `<button class="btn ${p.b && !p.c ? "primary" : ""}" data-open-design="pay">결제 UI 편집기</button>`)}
+        ${stepLI("D", p.d, p.b, "MISSION D · 결제 처리 코드 수정",
+            `payment.js 의 handlePayment 를 고쳐 중복 요청 차단·서버 멱등성·결과 분기를 만들고 [테스트 실행]으로 확인합니다. <em>${s.codeTested ? (s.codeOk ? "테스트 통과" : "테스트 실패") : "미실행"}${s.testRuns ? ` (${s.testRuns}회)` : ""}</em>`,
+            `<button class="btn ${p.b && !p.d ? "primary" : ""}" data-open-pay="js">코드 수정하기</button>`)}
+        ${stepLI("E", p.e && q && q.allPass, p.c || p.d, "MISSION E · QA 최종 검증",
+            `정상·연속 클릭·지연·실패·예매 내역 다섯 항목을 현재 팀의 UI·코드 상태로 검사합니다. <em>${q ? `${q.passed}/${q.total} 통과${q.stale ? " · 수정 후 재실행 필요" : ""}` : "미실행"}</em>`,
+            `<button class="btn ${(p.c || p.d) && !(q && q.allPass) ? "primary" : ""}" data-open-qa>QA 실행</button>`)}
+        ${stepLI("F", p.f, p.e, "업무 보고서",
+            s.reportSubmitted ? `제출 완료 · ${esc(s.report?.submittedAt || "")} · ${esc(st)}` : `발견한 문제, UX·개발 측면 원인, 수정 사항(자동 첨부), 검증 결과(자동 첨부), 추가 확인 사항을 정리해 제출합니다.`,
+            `<button class="btn ${p.e && !p.f ? "primary" : ""}" data-open-report>${s.reportSubmitted ? "보고서 보기" : "업무 보고서 작성"}</button>`)}
       </ol>
     </div>`;
   } else if (t.no === 3) {
@@ -369,12 +473,13 @@ function recordsListHTML(list) {
       ${r.action ? `<div class="t-rec-row"><span>수행한 동작</span><p>${esc(r.action)}</p></div>` : ""}
       <div class="t-rec-row"><span>${r.action ? "실제 발생한 현상" : "발견한 현상"}</span><p>${esc(r.found)}</p></div>
       ${r.expected ? `<div class="t-rec-row"><span>예상한 정상 동작</span><p>${esc(r.expected)}</p></div>` : ""}
+      ${r.evidence ? `<div class="t-rec-row"><span>관련 증거</span><p>${esc(r.evidence)}</p></div>` : ""}
     </div>`).join("")}</div>`;
 }
 function renderRecords(t) {
-  const is3 = t.no === 3;
+  const is3 = t.no >= 3;
   crumbEl.innerHTML = `<a data-tlist>나의 업무</a><span>/</span><a data-tdetail>업무 상세</a><span>/</span><b>${is3 ? "오류 재현 기록" : "이상 현상 기록"}</b>`;
-  const list = is3 ? TS(3).reproductions : TS(1).reproduced;
+  const list = t.no === 4 ? TS(4).reproductions : t.no === 3 ? TS(3).reproductions : TS(1).reproduced;
   taskContent.innerHTML = `<div class="t-page">
     <div class="t-viewer-head">
       <button class="btn" data-tdetail>← 업무로 돌아가기</button>
@@ -605,12 +710,171 @@ function validateReport3(r) {
   return p;
 }
 
+// ---------- TASK-005 조사 질문 (MISSION B) ----------
+function renderQuestionsB(t) {
+  const s = TS(5);
+  crumbEl.innerHTML = `<a data-tlist>나의 업무</a><span>/</span><a data-tdetail>업무 상세</a><span>/</span><b>조사 질문</b>`;
+  taskContent.innerHTML = `<div class="t-page">
+    <div class="t-viewer-head"><button class="btn" data-tdetail>← 업무로 돌아가기</button><div><h1>MISSION B · 변경 기록 조사 질문</h1><span>디자인 변경 이력과 Git 기록, 빌드 목록을 확인한 뒤 기록에 근거해 답하세요. 자동 저장됩니다.</span></div></div>
+    <div class="t-btns" style="margin:0 0 12px"><button class="btn" data-open-design="history">디자인 변경 이력</button><button class="btn" data-open-ops="git">Git 기록 · 빌드</button><button class="btn" data-open-ops="deploy">배포 이력</button></div>
+    <form class="t-card t-report" onsubmit="return false">
+      ${TASK5.questionsB.map((q, i) => `<section class="t-rsec"><h3>${i + 1}. ${esc(q.title)}</h3><p class="t-help">${esc(q.help)}</p><textarea class="t-input" data-qb="${q.id}" rows="2" placeholder="기록에서 확인한 내용을 적으세요">${esc(s.answersB[q.id] || "")}</textarea></section>`).join("")}
+      <div class="t-ractions"><span class="t-help">자동 저장됨</span><button class="t-cta inline" data-tdetail>업무로 돌아가기</button></div>
+    </form></div>`;
+}
+taskContent.addEventListener("input", (e) => { const q = e.target.closest("[data-qb]"); if (q) { TS(5).answersB[q.dataset.qb] = q.value; G.save(); } });
+
+// ---------- TASK-005 증거 목록 ----------
+function renderEvidence5(t) {
+  const s = TS(5);
+  crumbEl.innerHTML = `<a data-tlist>나의 업무</a><span>/</span><a data-tdetail>업무 상세</a><span>/</span><b>확보한 증거</b>`;
+  taskContent.innerHTML = `<div class="t-page">
+    <div class="t-viewer-head"><button class="btn" data-tdetail>← 업무로 돌아가기</button><div><h1>확보한 증거 <small>${s.evidence.length}건</small></h1><span>DAYEON DEPLOY·디자인 이력의 [+ 증거] 버튼으로 모은 기록입니다. 보고서 ⑥에서 선택해 첨부합니다.</span></div></div>
+    ${s.evidence.length ? `<ul class="op-evlist">${s.evidence.map((e) => `<li><span class="op-src">${esc(e.src)}</span><p>${esc(e.text)}</p><small>${esc(e.time)}</small></li>`).join("")}</ul>` : `<div class="t-empty-box">아직 없습니다.</div>`}
+    <div class="t-btns" style="margin-top:12px"><button class="btn" data-open-ops="deploy">DAYEON DEPLOY 열기</button></div></div>`;
+}
+
+// ---------- TASK-005 타임라인 (MISSION D) ----------
+function renderTimeline5(t) {
+  const s = TS(5);
+  if (!s.timeline.order) s.timeline.order = [...TASK5.timelineStart];
+  crumbEl.innerHTML = `<a data-tlist>나의 업무</a><span>/</span><a data-tdetail>업무 상세</a><span>/</span><b>사건 타임라인</b>`;
+  const tl = s.timeline;
+  const cards = tl.order.map((id, i) => { const ev = TASK5.timeline.find((x) => x.id === id); return `<li class="t-tl-card ${tl.passed ? "locked" : ""}" draggable="${tl.passed ? "false" : "true"}" data-tl-idx="${i}"><span class="t-tl-no">${i + 1}</span><div><b>${esc(ev.label)}</b><small>${esc(ev.sub)}</small></div>${tl.passed ? "" : `<span class="mv"><button data-tl-move="${i}:-1" ${i === 0 ? "disabled" : ""} title="위로">▲</button><button data-tl-move="${i}:1" ${i === tl.order.length - 1 ? "disabled" : ""} title="아래로">▼</button></span>`}</li>`; }).join("");
+  taskContent.innerHTML = `<div class="t-page">
+    <div class="t-viewer-head"><button class="btn" data-tdetail>← 업무로 돌아가기</button><div><h1>MISSION D · 사건 타임라인 재구성</h1><span>조사한 기록(파일 수정 시각·커밋·빌드·배포 로그·QA)을 근거로, 실제로 무슨 일이 있었는지 이른 사건부터 순서대로 배치하세요. 카드를 끌어서 옮기거나 ▲▼ 버튼을 사용합니다.</span></div>${tl.passed ? "" : `<button class="t-cta inline" data-tl-check>순서 검증</button>`}</div>
+    ${tl.lastResult === "fail" && !tl.passed ? `<div class="t-tl-res fail">일부 사건의 시간 순서가 실제 기록과 일치하지 않습니다. 각 사건이 언제 일어났는지 기록에서 다시 확인하세요. (검증 ${tl.attempts}회)</div>` : ""}
+    ${tl.passed ? `<div class="t-tl-res pass"><b>타임라인 검증 통과</b> (${esc(tl.checkedAt || "")} · 검증 ${tl.attempts}회) 여섯 사건의 순서가 실제 기록과 일치합니다.</div>` : ""}
+    <ol class="t-tl" id="t-tl">${cards}</ol>
+    ${tl.passed ? `<div class="t-card" style="margin-top:14px"><h3 style="margin:0 0 8px">사고 원인 추리</h3><p style="margin:0 0 10px;font-size:15px">"디자인팀과 개발팀은 작업을 완료했는데 왜 고객에게 문제가 있는 서비스가 제공되었을까요?"</p><p class="t-help">확보한 증거를 사용해 직접 원인, 그렇게 판단한 증거, 예방하지 못한 업무 과정, 재발 방지 방법을 조사 보고서에 작성하세요. '누가 잘못했는가'보다 '어떤 과정이 실패했는가'에 집중합니다.</p><div class="t-btns" style="margin-top:10px"><button class="btn primary" data-open-report>조사 보고서 작성</button><button class="btn" data-open-evidence>증거 목록 (${s.evidence.length})</button></div></div>` : `<p class="t-help">조사가 더 필요하면 <a data-open-ops="deploy">배포 이력</a>, <a data-open-ops="git">Git 기록</a>, <a data-open-ops="files">공유 폴더</a>를 다시 확인하세요.</p>`}
+  </div>`;
+  if (!tl.passed) bindTimelineDrag();
+}
+let tlDrag = null;
+function bindTimelineDrag() {
+  const list = document.getElementById("t-tl"); if (!list) return;
+  list.querySelectorAll(".t-tl-card").forEach((card) => {
+    card.addEventListener("dragstart", (e) => { tlDrag = Number(card.dataset.tlIdx); card.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", String(tlDrag)); } catch (_) {} });
+    card.addEventListener("dragend", () => { card.classList.remove("dragging"); list.querySelectorAll(".over").forEach((c) => c.classList.remove("over")); });
+    card.addEventListener("dragover", (e) => { e.preventDefault(); card.classList.add("over"); });
+    card.addEventListener("dragleave", () => card.classList.remove("over"));
+    card.addEventListener("drop", (e) => { e.preventDefault(); const to = Number(card.dataset.tlIdx); if (tlDrag === null || tlDrag === to) return; moveTimeline(tlDrag, to); tlDrag = null; });
+  });
+}
+function moveTimeline(from, to) {
+  const o = TS(5).timeline.order; const [it] = o.splice(from, 1); o.splice(to, 0, it);
+  TS(5).timeline.lastResult = null; G.save(); renderTaskPage();
+}
+
+// ---------- TASK-005 조사 보고서 ----------
+function renderReport5(t) {
+  const s = TS(5);
+  const { ro, html } = reportHead(t, s, "조사 결과 보고서");
+  const d = (ro ? s.report : s.reportDraft) || { prod: "", staging: "", cause: "", why: "", prevent: "", evidenceIds: [] };
+  const dis = ro ? "disabled" : "";
+  const order = (s.timeline.order || []).map((id, i) => { const ev = TASK5.timeline.find((x) => x.id === id); return `<li>${i + 1}. ${esc(ev.label)} <small>(${esc(ev.sub)})</small></li>`; }).join("");
+  const sel = new Set(d.evidenceIds || []);
+  taskContent.innerHTML = `<div class="t-page">
+    ${html}
+    <div class="t-rstats"><span>조사 기록 <b>${s.fileNotes.length}</b></span><span>커밋 열람 <b>${s.commitsViewed.length}</b></span><span>배포 열람 <b>${s.deploysViewed.length}</b></span><span>증거 <b>${s.evidence.length}</b></span><span>타임라인 <b>${s.timeline.passed ? "통과" : "미통과"}</b></span></div>
+    <form class="t-card t-report" id="report-form" onsubmit="return false">
+      <section class="t-rsec"><h3>① 확인된 버전 불일치</h3><p class="t-help">배포 이력과 빌드 정보에서 확인한 운영·테스트 환경의 버전(빌드 ID 포함)을 적으세요.</p>
+        <div class="t-grid2"><label class="t-lab">운영 환경 (Production)<input class="t-input" name="prod" type="text" placeholder="예: v1.0.x (빌드 ID)" value="${esc(d.prod || "")}" ${dis}></label><label class="t-lab">테스트 환경 (Staging)<input class="t-input" name="staging" type="text" placeholder="예: v1.0.x (빌드 ID)" value="${esc(d.staging || "")}" ${dis}></label></div></section>
+      <section class="t-rsec"><h3>② 사건 발생 과정 <small>타임라인 자동 첨부</small></h3>${s.timeline.passed ? `<ol class="t-applied">${order}</ol>` : `<p class="t-help">타임라인 검증을 통과하면 여기에 첨부됩니다.</p>`}</section>
+      ${TASK5.report.questions.map((q) => textQ(q, d, dis)).join("")}
+      <section class="t-rsec"><h3>⑥ 참고한 증거 <small>${sel.size}건 선택</small></h3>${s.evidence.length ? `<ul class="t-ev-pick">${s.evidence.map((e) => `<li><label><input type="checkbox" name="evidenceIds" value="${e.id}" ${sel.has(e.id) ? "checked" : ""} ${dis}><span class="op-src">${esc(e.src)}</span><span>${esc(e.text)}</span></label></li>`).join("")}</ul>` : `<p class="t-help">확보한 증거가 없습니다. DAYEON DEPLOY에서 [+ 증거]로 모으세요.</p>`}</section>
+      <div class="t-feedback" id="report-feedback" hidden></div>
+      ${ro ? "" : `<div class="t-ractions"><span class="t-help" id="report-saved">자동 저장됨</span><button class="t-cta inline" data-submit-report="5">${s.review.status === "returned" ? "보완해서 다시 제출" : "보고서 제출"}</button></div>`}
+    </form></div>`;
+  if (!ro) bindDraft(s);
+}
+function validateReport5(r) {
+  const s = TS(5);
+  const p = [];
+  if (!s.fileNotes.length) p.push({ where: "MISSION A", msg: "공유 폴더 조사 기록을 1건 이상 작성하세요." });
+  if (!s.designHistoryViewed) p.push({ where: "MISSION B", msg: "디자인 변경 이력을 확인하세요." });
+  if (!s.commitsViewed.length) p.push({ where: "MISSION B", msg: "Git 변경 기록을 확인하세요." });
+  if (!s.deploysViewed.length) p.push({ where: "MISSION C", msg: "배포 로그를 확인하세요." });
+  if (!s.timeline.passed) p.push({ where: "MISSION D", msg: "사건 타임라인 검증을 통과해야 합니다." });
+  if (!(r.prod || "").trim() || !(r.staging || "").trim()) p.push({ where: "①", msg: "운영·테스트 환경의 버전을 모두 적으세요." });
+  TASK5.report.questions.forEach((q) => { if (!(r[q.id] || "").trim()) p.push({ where: q.title.slice(0, 1), msg: `'${q.title.slice(2)}' 항목을 작성하세요.` }); });
+  if (!(r.evidenceIds || []).length) p.push({ where: "⑥", msg: "참고한 증거를 1건 이상 선택하세요." });
+  return p;
+}
+
+// ---------- TASK-004 QA 화면 ----------
+function renderQA(t) {
+  const s = TS(4);
+  crumbEl.innerHTML = `<a data-tlist>나의 업무</a><span>/</span><a data-tdetail>업무 상세</a><span>/</span><b>QA 검증</b>`;
+  const q = s.qa;
+  taskContent.innerHTML = `<div class="t-page">
+    <div class="t-viewer-head">
+      <button class="btn" data-tdetail>← 업무로 돌아가기</button>
+      <div><h1>payment_test_cases.md · QA 검증</h1><span>현재 팀의 결제 UI 수정안${s.uiApplied ? "(적용됨)" : "(미적용)"}과 코드 수정 상태${s.codeOk ? "(테스트 통과)" : s.codeTested ? "(테스트 실패)" : "(미실행)"}로 다섯 항목을 시뮬레이션합니다</span></div>
+      <button class="t-cta inline" data-run-qa>▶ QA 실행</button>
+    </div>
+    ${q ? `<div class="t-qa-sum"><span class="big ${q.allPass ? "ok" : "bad"}">${q.passed}/${q.total} 통과</span><span class="t-dim">마지막 실행 ${esc(q.at)} · ${q.runs}회${q.stale ? " · 이후 수정이 있어 다시 실행하세요" : ""}</span></div>
+    <table class="t-qa-table"><thead><tr><th>#</th><th>테스트</th><th>기대 결과</th><th>결과</th><th>상세 / 안내</th></tr></thead><tbody>
+      ${q.tests.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.name)}</b></td><td>${esc((TASK4.cases.find((c) => c.id === x.id) || {}).expect || "")}</td><td class="${x.pass ? "pass" : "fail"}">${x.pass ? "PASS" : "FAIL"}</td><td>${esc(x.detail)}${x.pass ? "" : `<div class="hint">${esc(x.hint)}</div>`}</td></tr>`).join("")}
+    </tbody></table>
+    ${q.allPass ? `<div class="t-banner ok" style="margin-top:16px"><b>검증 완료</b> 다섯 항목이 모두 통과했습니다. TICKET ON에서 직접 한 번 더 확인하고 업무 보고서를 작성하세요.</div><div class="t-btns" style="margin-top:12px"><button class="btn" data-open-pay-ticket>TICKET ON 결제 테스트</button><button class="btn primary" data-open-report>업무 보고서 작성</button></div>`
+       : `<div class="t-banner wait" style="margin-top:16px"><b>보완 필요</b> 실패한 항목의 안내를 참고해 관련 화면이나 로그를 다시 확인하세요. UI 수정과 코드 수정은 따로 검사됩니다.</div><div class="t-btns" style="margin-top:12px"><button class="btn" data-open-design="pay">결제 UI 편집기</button><button class="btn" data-open-pay="js">코드 수정하기</button><button class="btn" data-open-pay="net">요청 로그</button></div>`}`
+    : `<div class="t-empty-box">아직 실행하지 않았습니다. 위의 [QA 실행]을 누르면 현재 상태로 검사합니다.</div>`}
+  </div>`;
+}
+
+// ---------- TASK-004 업무 보고서 ----------
+function renderReport4(t) {
+  const s = TS(4);
+  const { ro, html } = reportHead(t, s, "업무 보고서");
+  const d = (ro ? s.report : s.reportDraft) || { problem: "", ux: "", dev: "", fixNote: "", followup: "" };
+  const dis = ro ? "disabled" : "";
+  const uiList = s.uiApplied && s.ui ? TASK4.ui.map((o) => { const c = o.choices.find((x) => x.id === s.ui[o.id]); return c ? `<li>${esc(o.title.replace(/^[①-⑩]\s*/, ""))}: ${esc(c.label)}</li>` : ""; }).join("") : "";
+  const diff = (() => { const o = TASK4.js, c = (s.code || TASK4.js.join("\n")).split("\n"); const n = Math.max(o.length, c.length); return Array.from({ length: n }, (_, i) => ({ no: i + 1, before: o[i] || "", after: c[i] || "" })).filter((x) => x.before !== x.after); })();
+  const q = s.qa;
+  taskContent.innerHTML = `<div class="t-page">
+    ${html}
+    <div class="t-rstats">
+      <span>재현 기록 <b>${s.reproductions.length}</b></span><span>요청 로그 <b>${s.requests.length}</b></span><span>단서 <b>${s.clues.length}</b></span><span>UI <b>${s.uiApplied ? "적용" : "미적용"}</b></span><span>코드 <b>${s.codeOk ? "통과" : s.codeTested ? "실패" : "미실행"}</b></span><span>QA <b>${q ? `${q.passed}/${q.total}` : "미실행"}</b></span>
+      <button class="btn" data-open-records>재현 기록 보기</button>
+    </div>
+    <form class="t-card t-report" id="report-form" onsubmit="return false">
+      ${TASK4.report.questions.slice(0, 3).map((qq) => textQ(qq, d, dis)).join("")}
+      <section class="t-rsec">
+        <h3>④ 수정 사항 <small>자동 첨부</small></h3>
+        <h4 class="t-sub">UI 수정</h4>${uiList ? `<ul class="t-applied">${uiList}</ul>` : `<p class="t-help">적용된 UI 수정안이 없습니다.</p>`}
+        <h4 class="t-sub">코드 수정 (payment.js)</h4>${diff.length ? `<div class="t-code"><div class="t-code-cap">변경된 줄 ${diff.length}</div>${diff.map((x) => `<div class="t-code-row"><span class="ln">${x.no}</span><del>${esc(x.before)}</del><ins>${esc(x.after)}</ins></div>`).join("")}</div>` : `<p class="t-help">수정된 코드가 없습니다.</p>`}
+        <textarea class="t-input" name="fixNote" rows="2" placeholder="수정 내용에 대한 설명 (선택)" ${dis}>${esc(d.fixNote || "")}</textarea>
+      </section>
+      <section class="t-rsec">
+        <h3>⑤ 검증 결과 <small>자동 첨부</small></h3>
+        ${q ? `<ul class="t-applied">${q.tests.map((x) => `<li>${esc(x.name)}: <b>${x.pass ? "PASS" : "FAIL"}</b> — ${esc(x.detail)}</li>`).join("")}<li>실행 ${esc(q.at)} · ${q.passed}/${q.total} 통과${q.stale ? " (이후 수정 있음)" : ""}</li></ul>` : `<p class="t-help">QA를 아직 실행하지 않았습니다.</p>`}
+      </section>
+      ${textQ(TASK4.report.questions[3], d, dis)}
+      <div class="t-feedback" id="report-feedback" hidden></div>
+      ${ro ? "" : `<div class="t-ractions"><span class="t-help" id="report-saved">자동 저장됨</span><button class="t-cta inline" data-submit-report="4">${s.review.status === "returned" ? "보완해서 다시 제출" : "보고서 제출"}</button></div>`}
+    </form>
+  </div>`;
+  if (!ro) bindDraft(s);
+}
+function validateReport4(r) {
+  const s = TS(4);
+  const p = [];
+  if (!s.reproductions.length) p.push({ where: "MISSION A", msg: "TICKET ON에서 결제 오류 재현 기록을 1건 이상 작성하세요." });
+  if (!s.logViewed) p.push({ where: "MISSION B", msg: "개발자 도구에서 payment_network.log 를 확인하세요." });
+  if (!s.uiApplied) p.push({ where: "MISSION C", msg: "결제 UI 수정안을 적용하세요." });
+  if (!s.codeTested) p.push({ where: "MISSION D", msg: "payment.js 를 수정하고 [테스트 실행]을 하세요." });
+  if (!s.qa) p.push({ where: "MISSION E", msg: "QA를 실행하세요." });
+  TASK4.report.questions.forEach((qq) => { if (!r[qq.id]) p.push({ where: qq.title.slice(0, 1), msg: `'${qq.title.slice(2)}' 항목을 작성하세요.` }); });
+  return p;
+}
+
 // ---------- 제출 / 검토 / 완료 ----------
 function submitReport(no) {
   const f = document.getElementById("report-form");
   const r = readReportForm(f);
   const fb = document.getElementById("report-feedback");
-  const problems = no === 3 ? validateReport3(r) : no === 2 ? validateReport2(r) : validateReport1(r);
+  const problems = no === 6 ? validateReport6(r) : no === 5 ? validateReport5(r) : no === 4 ? validateReport4(r) : no === 3 ? validateReport3(r) : no === 2 ? validateReport2(r) : validateReport1(r);
   if (problems.length) {
     fb.hidden = false;
     fb.className = "t-feedback bad";
@@ -641,7 +905,7 @@ function approveReport(no, note = "") {
   const s = TS(no);
   if (!s.reportSubmitted) return;
   s.review = { status: "approved", note };
-  s.done = true;
+  s.done = no !== 6;   // TASK-006 은 배포 후 확인 완료로 끝남
   G.save();
   if (G.state.currentApp === "task") renderTaskPage();
   toast({ title: "DAYEON TASK", sub: `TASK-00${no}`, text: "보고서가 승인되어 업무가 완료되었습니다.", app: "task" });
@@ -653,6 +917,9 @@ function approveReport(no, note = "") {
     if (no === 1) startFollowup();
     else if (no === 2) startFollowup2();
     else if (no === 3) startFollowup3();
+    else if (no === 4) startFollowup5();
+    else if (no === 5) startFollowup7();
+    else if (no === 6) { showApp("task"); G.state.taskView = { view: "detail", taskNo: 6 }; renderTaskPage(); return; }
   }, 1600);
 }
 // 교사: 보완 요청 → 다시 작성 가능
@@ -679,7 +946,7 @@ function forceCompleteTask(no = 1) {
       s.report = { stages: ["start", "payreq", "payres"], problems: "(교사 진행) 예매 시작·결제 요청·결제 결과 단계에서 서로 다른 문제 확인", evidence: "고객 문의 및 테스트 결과", followup: "개발팀 결제 응답 처리 확인 필요", refs: [], submittedAt: fmtMinutes(nowMinutes()) };
       s.reportDraft = s.report; s.reportSubmitted = true;
     }
-  } else {
+  } else if (no === 2) {
     G.state.task2.assigned = true;
     if (!s.findings.length) s.findings = TASK2.spots.map((x) => spotInfo(x.id)).filter((x) => x.issue).map((x) => ({ id: "f-" + x.id, spotId: x.id, page: x.page, note: "(교사 진행)", time: fmtMinutes(nowMinutes()) }));
     s.findingsRevealed = true;
@@ -688,6 +955,47 @@ function forceCompleteTask(no = 1) {
     if (!s.designApplied) { G.state.ticketDesign = { ...s.design }; s.designApplied = true; }
     if (!s.reportSubmitted) {
       s.report = { problems: TASK2.spots.map((x) => spotInfo(x.id)).filter((x) => x.issue).map((x) => x.id), problemsEtc: "", principles: TASK2.principles.map((p) => p.id), improvements: "(교사 진행)", expected: "주요 버튼을 바로 찾고 좌석 상태를 색 없이도 구별", devChecks: "결제하기 버튼 무응답, 결제 결과 불일치", submittedAt: fmtMinutes(nowMinutes()) };
+      s.reportDraft = s.report; s.reportSubmitted = true;
+    }
+  }
+  if (no === 6) {
+    G.state.task6.assigned = true;
+    if (!s.candidate) s.candidate = { id: "v1.0.5", reason: "(교사 진행) 최종 QA·승인 기록", evidence: "QA_Final_Report", extra: "-", at: fmtMinutes(nowMinutes()) };
+    const now = fmtMinutes(nowMinutes());
+    ["showVisited", "mobileViewed", "reserveClicked", "rapidTested", "failTested", "failShown", "paidOk", "mypageAfterPaid", "rollbackViewed"].forEach((k) => { if (!s.qaEvents[k]) s.qaEvents[k] = now; });
+    s.qaObs = { "QA-001": { note: "(교사 진행) 핵심 정보·주 버튼 확인", verdict: "PASS", at: now }, "QA-002": { note: "(교사 진행) 모바일 버튼 정상", verdict: "PASS", at: now } };
+    if (typeof evalFinalQA === "function") evalFinalQA();
+    if (!s.meeting) s.meeting = { decision: "approve", reason: "(교사 진행) 최종 QA 통과·승인 빌드", evidence: "QA_Final_Report", risks: "-", response: "v1.0.2+핫픽스로 롤백, Rollback_Guide 절차", at: now };
+    if (!s.reportSubmitted) { s.report = { note: "(교사 진행)", submittedAt: now }; s.reportDraft = s.report; s.reportSubmitted = true; }
+    s.review = { status: "approved", note: "" };
+    if (!s.release || s.release.status !== "done") s.release = { requested: true, build: "v1.0.5", by: "김팀장", status: "done", startedAt: Date.now() - 20000, doneAt: Date.now(), requestedAt: Date.now() - 25000 };
+    s.postCheckDone = true; s.postCheckAt = now;
+  }
+  if (no === 5) {
+    G.state.task5.assigned = true;
+    if (!s.fileNotes.length) s.fileNotes.push({ id: "fn-" + Date.now(), file: "05_배포/최종_진짜최종/ticketon_v1.0.2.zip", mismatch: "(교사 진행) 폴더 이름은 최종이지만 10.15 빌드 b-1002-c91e", reason: "운영 배포 D-118에 사용됨", time: fmtMinutes(nowMinutes()) });
+    s.filesViewed = TASK5.files.map((f) => f.id); s.designHistoryViewed = true; s.commitsViewed = TASK5.commits.map((c) => c.id); s.deploysViewed = TASK5.deploys.map((d) => d.id); s.qaViewed = true; s.chatViewed = true;
+    TASK5.questionsB.forEach((q) => { if (!s.answersB[q.id]) s.answersB[q.id] = "(교사 진행)"; });
+    if (!s.evidence.length) s.evidence.push({ id: "ev-" + Date.now(), src: "배포 · D-118", text: "(교사 진행) D-118 production v1.0.2 · 최종_진짜최종/ticketon_v1.0.2.zip · 빌드 b-1002-c91e · 검증 skipped", time: fmtMinutes(nowMinutes()) });
+    s.timeline = { order: [...TASK5.timeline].sort((a, b) => a.at.localeCompare(b.at)).map((e) => e.id), attempts: (s.timeline && s.timeline.attempts || 0) + 1, passed: true, lastResult: "pass", checkedAt: fmtMinutes(nowMinutes()) };
+    if (!s.reportSubmitted) {
+      s.report = { prod: "v1.0.2 (b-1002-c91e)", staging: "v1.0.4 (b-1004-7f3a)", cause: "(교사 진행) 오래된 빌드 산출물 선택", why: "배포 전 버전 검증 절차 없음", prevent: "빌드 ID 검증·배포 체크리스트·QA 승인", evidenceIds: [s.evidence[0].id], submittedAt: fmtMinutes(nowMinutes()) };
+      s.reportDraft = s.report; s.reportSubmitted = true;
+    }
+  }
+  if (no === 4) {
+    G.state.task4.assigned = true;
+    if (!s.reproductions.length) s.reproductions.push({ id: "rec-" + Date.now(), screen: "checkout", screenLabel: "결제 확인", action: "(교사 진행) 결제하기 연속 클릭", found: "요청 3건, 실패도 완료 표시", expected: "한 번만 처리되고 결과대로 안내", evidence: "Request #001~#003", time: fmtMinutes(nowMinutes()) });
+    s.logViewed = true; s.devtoolOpened = true;
+    if (!s.clues.length) s.clues.push({ id: "clue-" + Date.now(), src: "network", text: "(교사 진행) 같은 attemptKey 요청 3건 · 청구 2건", time: fmtMinutes(nowMinutes()) });
+    s.ui = bestUi(); s.uiReviewed = Object.fromEntries(TASK4.ui.map((o) => [o.id, true])); s.uiApplied = true; s.uiAppliedAt = fmtMinutes(nowMinutes());
+    s.fixedCode = 'let isProcessing = false;\n\nasync function handlePayment() {\n  if (isProcessing) return;\n  isProcessing = true;\n  try {\n    const result = await requestPayment(order, { idempotencyKey: createIdempotencyKey(order) });\n    if (result.ok) showSuccessMessage(result);\n    else showFailureMessage(result);\n  } catch (e) {\n    showPendingMessage();\n  } finally {\n    isProcessing = false;\n  }\n}';
+    s.code = [...TASK4.js.slice(0, TASK4.editableFrom - 1), ...s.fixedCode.split("\n")].join("\n");
+    s.codeTested = true; s.testRuns = (s.testRuns || 0) + 1; s.codeFlags = { client: true, server: true, branch: true, pending: true, awaitOk: true }; s.codeOk = true;
+    s.testResult = { ok: true, flags: s.codeFlags, at: fmtMinutes(nowMinutes()), entries: [], analysis: {} };
+    runQA();
+    if (!s.reportSubmitted) {
+      s.report = { problem: "(교사 진행) 중복 요청·실패를 완료로 안내", ux: "처리 중 안내 없음", dev: "가드·멱등성·분기 없음", fixNote: "", followup: "-", submittedAt: fmtMinutes(nowMinutes()) };
       s.reportDraft = s.report; s.reportSubmitted = true;
     }
   }
@@ -747,7 +1055,7 @@ taskApp.addEventListener("click", (e) => {
   if (start) { startTask(Number(start.dataset.start)); return; }
 
   if (e.target.closest("[data-open-inquiries]")) { setView("inquiries", 1); return; }
-  if (e.target.closest("[data-open-records]")) { setView("records", G.state.taskView.taskNo === 3 ? 3 : 1); return; }
+  if (e.target.closest("[data-open-records]")) { setView("records", G.state.taskView.taskNo >= 3 ? G.state.taskView.taskNo : 1); return; }
   if (e.target.closest("[data-open-ticket]")) { showApp("ticket"); return; }
   if (e.target.closest("[data-open-report]")) { setView("report"); return; }
   if (e.target.closest("[data-open-guide]")) { setView("guide", 2); return; }
@@ -755,6 +1063,21 @@ taskApp.addEventListener("click", (e) => {
   if (od) { openDesign(od.dataset.openDesign); return; }
   const odv = e.target.closest("[data-open-dev]");
   if (odv) { openDevtool(odv.dataset.openDev); return; }
+  const oo = e.target.closest("[data-open-ops]");
+  if (oo) { openOps(oo.dataset.openOps); return; }
+  if (e.target.closest("[data-open-timeline]")) { setView("timeline", 5); return; }
+  if (e.target.closest("[data-open-meeting]")) { setView("meeting", 6); return; }
+  if (e.target.closest('[data-tnav="eval"]')) { setView("eval", null); return; }
+  if (e.target.closest("[data-open-qb]")) { setView("qb", 5); return; }
+  if (e.target.closest("[data-open-evidence]")) { setView("evidence", 5); return; }
+  const tlm = e.target.closest("[data-tl-move]");
+  if (tlm) { const [i, d] = tlm.dataset.tlMove.split(":").map(Number); moveTimeline(i, i + d); return; }
+  if (e.target.closest("[data-tl-check]")) { const ok = checkTimeline5(); renderTaskPage(); toast({ title: "DAYEON TASK", sub: "타임라인", text: ok ? "순서가 실제 기록과 일치합니다." : "일부 사건의 시간 순서가 실제 기록과 일치하지 않습니다." }); return; }
+  const op = e.target.closest("[data-open-pay]");
+  if (op) { openPayTool(op.dataset.openPay); return; }
+  if (e.target.closest("[data-open-pay-ticket]")) { showApp("ticket"); G.state.ticketScreen = "checkout"; if (!TU().seats.length) TU().seats = ["C3"]; goScreen("checkout"); return; }
+  if (e.target.closest("[data-open-qa]")) { setView("qa", 4); return; }
+  if (e.target.closest("[data-run-qa]")) { runQA(); renderTaskPage(); toast({ title: "DAYEON TASK", sub: "QA", text: `${G.state.task4.qa.passed}/${G.state.task4.qa.total} 통과` }); return; }
   const sub = e.target.closest("[data-submit-report]");
   if (sub) { submitReport(Number(sub.dataset.submitReport)); return; }
 
@@ -772,13 +1095,24 @@ taskApp.addEventListener("click", (e) => {
     if (type === "guide") setView("guide");
     if (type === "design") openDesign("review", att.dataset.version);
     if (type === "dev") openDevtool(att.dataset.file || "log");
+    if (type === "pay") openPayTool(att.dataset.file || "net");
+    if (type === "payui") openDesign("pay");
+    if (type === "ops") openOps(att.dataset.file || "deploy");
+    if (type === "ops6") { if (att.dataset.doc) fLocal.doc = att.dataset.doc; openOps(att.dataset.file || "candidates"); }
+    if (type === "dhist") { if (!TS(5).started) { toast({ title: "DAYEON TASK", sub: "첨부 자료", text: "업무를 시작하면 열 수 있습니다." }); return; } openDesign("history"); }
   }
 });
 
+// TASK-004 개발자 도구 열기 (paytool.js)
+function openPayTool(fileId = "net") {
+  if (!TS(4).started) { toast({ title: "DAYEON TASK", sub: "첨부 자료", text: "업무를 시작하면 열 수 있습니다." }); return; }
+  G.state.devView.file = fileId; G.state.devView.set = 4;
+  showApp("dev");
+}
 // 개발자 도구 열기 (devtool.js)
 function openDevtool(fileId = "log") {
   if (!TS(3).started) { toast({ title: "DAYEON TASK", sub: "첨부 자료", text: "업무를 시작하면 개발자 도구를 열 수 있습니다." }); return; }
-  G.state.devView.file = fileId;
+  G.state.devView.file = fileId; G.state.devView.set = 3;
   showApp("dev");
 }
 // 디자인 검수 뷰어 열기 (design.js)

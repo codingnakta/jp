@@ -36,7 +36,7 @@ async function boot() {
 // 새 이벤트가 오면 잠깐 크게 보여주는 연출
 let spotTimer = null;
 function spotlight(e) {
-  if (["task", "hint", "debrief", "official", "ending", "invite"].includes(e.type)) {
+  if (["task", "hint", "debrief", "official", "ending", "invite", "leave"].includes(e.type)) {
     D.overlay = e;
     clearTimeout(spotTimer);
     if (e.type !== "ending") spotTimer = setTimeout(() => { D.overlay = null; render(); }, 9000);
@@ -46,12 +46,13 @@ function spotlight(e) {
 function render() {
   if (!D.pub) { app.innerHTML = `<div class="boot">세션을 찾을 수 없습니다.</div>`; return; }
   const curTask = D.pub.currentTask || 0;
-  const phase = curTask ? D.pub.tasks["t" + curTask].status : null;
+  const phase = curTask ? ((D.pub.tasks || {})["t" + curTask] || {}).status || "LOCKED" : null;
   const teams = Object.values(D.teams);
   const online = teams.filter((t) => t.online && Date.now() - (t.lastSeen || 0) < 60000).length;
-  const feed = D.events.filter((e) => ["message", "system", "task", "invite", "hint", "debrief", "official"].includes(e.type)).slice(-14);
+  const feed = D.events.filter((e) => ["message", "system", "task", "invite", "hint", "debrief", "official", "leave"].includes(e.type)).slice(-14);
   const hints = D.events.filter((e) => e.type === "hint");
   const official = D.pub.officialService && D.pub.officialService.design;
+  const rel = D.pub.release || {}; const evalPub = D.pub.eval || {};
 
   app.innerHTML = `
     <header class="top">
@@ -59,6 +60,8 @@ function render() {
       <div class="status">
         ${curTask ? `<span class="task">TASK-00${curTask}</span><span class="phase ${phase}">${PHASE_KO[phase]}</span>` : `<span class="phase">첫 출근</span>`}
         ${D.pub.status === "paused" ? `<span class="paused">⏸ 잠시 멈춤 · 토론 시간</span>` : ""}
+        ${rel.status === "deploying" ? `<span class="phase ACTIVE">⇧ ${esc(rel.build)} 운영 배포 중</span>` : rel.status === "done" ? `<span class="phase COMPLETED">✓ ${esc(rel.build)} 출시 완료</span>` : ""}
+        ${D.pub.leaveApproved ? `<span class="phase COMPLETED">퇴근 승인</span>` : ""}
       </div>
       <div class="right"><span class="clock">${SyncUtil.fmtClock(D.pub.gameTime)}</span><span class="teams">${online}/${teams.length}팀 접속</span><span class="conn ${Sync.connection.online ? "on" : "off"}"></span></div>
     </header>
@@ -71,6 +74,8 @@ function render() {
         <div class="panel"><h3>현재 업무</h3>${curTask ? taskPanel(curTask) : `<p class="dim">아직 배정된 업무가 없습니다.</p>`}</div>
         <div class="panel"><h3>공개된 힌트</h3>${hints.length ? `<ul>${hints.map((h) => `<li>${esc(h.text)}</li>`).join("")}</ul>` : `<p class="dim">아직 없음</p>`}</div>
         <div class="panel"><h3>TICKET ON 공식 서비스</h3>${official ? `<p class="ok">디자인 수정 반영됨 · ${esc(D.pub.officialService.source)}</p><ul class="design">${designSummary(official)}</ul>` : `<p class="dim">운영 화면(기존 v2) 그대로</p>`}</div>
+        ${rel.status ? `<div class="panel"><h3>DAYEON DEPLOY · 운영</h3><p class="${rel.status === "done" ? "ok" : ""}">${rel.status === "done" ? `${esc(rel.build)} 배포 완료 · 서비스 정상` : `${esc(rel.build)} 배포 진행 중…`}</p></div>` : ""}
+        ${evalPub.published ? `<div class="panel"><h3>신입사원 근무평가</h3><p class="ok">전체 팀 평가서 발급 완료${D.pub.leaveApproved ? " · 전체 퇴근 승인" : ""}</p>${evalPub.showTitles && evalPub.titles ? `<ul class="design">${Object.entries(evalPub.titles).map(([tid, t]) => `<li>${esc((D.teams[tid] || {}).name || tid)}: <b>${esc(t)}</b></li>`).join("")}</ul>` : ""}</div>` : ""}
         <div class="panel teams"><h3>참가 팀</h3>${teams.length ? `<ul>${teams.map((t) => `<li><i class="${t.online && Date.now() - (t.lastSeen || 0) < 60000 ? "on" : ""}"></i>${esc(t.name)}</li>`).join("")}</ul>` : `<p class="dim">입장 대기 중</p>`}</div>
       </aside>
     </main>
@@ -86,11 +91,12 @@ function feedHTML(e) {
   if (e.type === "hint") return `<div class="m card hint"><div class="label">힌트</div><p>${esc(e.text)}</p></div>`;
   if (e.type === "debrief") return `<div class="m card debrief"><div class="label">${esc(e.title)}</div><p>${esc(e.text).replace(/\n/g, "<br>")}</p></div>`;
   if (e.type === "official") return `<div class="m card ok"><div class="label">공식 서비스</div><p>${esc(e.text)}</p></div>`;
+  if (e.type === "leave") return `<div class="m card ok"><div class="label">퇴근 승인</div><p>${esc(e.text)}</p></div>`;
   return "";
 }
 function taskPanel(no) {
   const t = TASKS.find((x) => x.no === no);
-  const st = D.pub.tasks["t" + no].status;
+  const st = ((D.pub.tasks || {})["t" + no] || {}).status || "LOCKED";
   return `<div class="tp"><b>TASK-00${no}</b><div class="title">${esc(t ? t.title : "")}</div><div class="phase ${st}">${PHASE_KO[st]}</div>
     <ol class="steps">${["업무 배정", "조사 진행", "조사 마감·검토", "해설·발표", "완료"].map((l, i) => `<li class="${["ANNOUNCED", "ACTIVE", "REVIEW", "DEBRIEF", "COMPLETED"].indexOf(st) >= i ? "on" : ""}">${l}</li>`).join("")}</ol></div>`;
 }
@@ -104,6 +110,7 @@ function overlayHTML(e) {
   else if (e.type === "debrief") inner = `<div class="label">${esc(e.title)}</div><p class="long">${esc(e.text).replace(/\n/g, "<br>")}</p>`;
   else if (e.type === "official") inner = `<div class="label">TICKET ON 공식 서비스</div><h2>디자인 수정이 반영되었습니다</h2><p>${esc(e.text)}</p>`;
   else if (e.type === "invite") inner = `<div class="label">채널 초대</div><h2>#프로젝트-티켓온</h2><p>김팀장님이 신입사원을 프로젝트 채널에 초대했습니다.</p>`;
+  else if (e.type === "leave") inner = `<div class="label">퇴근 승인</div><h1>오늘은 정시 퇴근입니다</h1><p class="long">${esc(e.text)}</p>`;
   else if (e.type === "ending") inner = `<div class="label">ENDING</div><h1>${esc(e.title)}</h1><p class="long">${esc(e.text)}</p><div class="meta">수고하셨습니다 👏</div>`;
   return `<div class="overlay ${e.type}" onclick="D.overlay=null;render()"><div class="box">${inner}</div></div>`;
 }
