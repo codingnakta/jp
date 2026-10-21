@@ -351,26 +351,32 @@ function buildGuide() {
 }
 function guideTab() {
   const steps = buildGuide();
-  steps.forEach((st, i) => { if (st.manualDone) { const orig = st.done; st.done = () => orig() || !!guideSkipped[i]; } });
-  let current = steps.findIndex((st) => !st.done());
+  const skipKey = (t) => t.replace(/[.$#\[\]\/ ]/g, "_");
+  const skipped = { ...guideSkipped, ...((T.priv && T.priv.guideSkipped) || {}) };   // 건너뛴 단계는 DB(private)에 저장되어 새로고침 후에도 유지
+  steps.forEach((st) => { if (st.manualDone) { const orig = st.done; st.done = () => orig() || !!skipped[skipKey(st.title)]; } });
+  // 뒤 단계가 이미 끝났으면 앞의 수동 단계(검토·승인 등)는 지나간 것으로 본다 → 가이드가 앞 단계에 멈추지 않음
+  const doneFlags = steps.map((st) => !!st.done());
+  const lastDone = doneFlags.lastIndexOf(true);
+  let current = doneFlags.findIndex((d, i) => !d && i > lastDone);
   if (current < 0) current = steps.length;
   const paused = T.pub.status === "paused";
   const items = steps.map((st, i) => {
     const state = i < current ? "done" : i === current ? "current" : "todo";
+    const passedOver = i < current && !doneFlags[i];
     const ready = st.ready ? st.ready() : true;
     let actions = "";
     if (state === "current") {
       if (st.official) {
         actions = `<div class="btns"><button class="primary" data-official="v4">디자인팀 최종 시안(v4) 반영</button>${Object.entries(T.teamData).filter(([, d]) => d.state && d.state.task2 && d.state.task2.design).map(([tid]) => `<button data-official="${tid}">${esc(T.teams[tid] ? T.teams[tid].name : tid)} 팀 수정안 반영</button>`).join("")}</div>`;
       } else if (st.action) {
-        actions = `<div class="btns"><button class="primary big-btn" data-guide="${i}" ${ready && !T.busy ? "" : "disabled"}>${esc(st.action.label)}${st.count ? ` (${st.count}개)` : ""}</button>${st.manualDone ? `<button data-guide-skip="${i}">이 단계 건너뛰고 다음으로</button>` : ""}</div>${!ready ? `<p class="help">이 단계는 아직 실행할 수 없습니다. 앞 단계가 끝났는지 확인하세요.</p>` : ""}`;
+        actions = `<div class="btns"><button class="primary big-btn" data-guide="${i}" ${ready && !T.busy ? "" : "disabled"}>${esc(st.action.label)}${st.count ? ` (${st.count}개)` : ""}</button>${st.manualDone ? `<button data-guide-skip="${esc(skipKey(st.title))}">이 단계 건너뛰고 다음으로</button>` : ""}</div>${!ready ? `<p class="help">이 단계는 아직 실행할 수 없습니다. 앞 단계가 끝났는지 확인하세요.</p>` : ""}`;
       }
       if (st.tools) actions += `<div class="btns tools"><button data-pause="1">${paused ? "▶ 진행 재개" : "⏸ 일시정지 (토론 시간)"}</button><button data-tab="story">힌트 공개하러 가기</button><button data-tab="teams">학생 현황 보기</button></div>`;
     }
     return `<li class="g-step ${state}">
       <div class="g-no">${state === "done" ? "✓" : i + 1}</div>
       <div class="g-body">
-        <div class="g-title">${esc(st.title)}${st.status ? `<span class="g-status">${esc(st.status)}</span>` : ""}</div>
+        <div class="g-title">${esc(st.title)}${st.status ? `<span class="g-status">${esc(st.status)}</span>` : ""}${passedOver ? `<span class="g-status">지나감</span>` : ""}</div>
         ${state === "current" ? `<p class="g-desc">${esc(st.desc)}</p>${actions}` : state === "todo" ? `<p class="g-desc dim">${esc(st.desc)}</p>` : ""}
       </div>
     </li>`;
@@ -784,7 +790,7 @@ function sessionTab() {
 function bindTab() {
   const q = (s) => app.querySelectorAll(s);
   q("[data-guide]").forEach((b) => b.addEventListener("click", async () => { const st = buildGuide()[Number(b.dataset.guide)]; if (st && st.action) await st.action.fn(); render(); }));
-  q("[data-guide-skip]").forEach((b) => b.addEventListener("click", () => { guideSkipped[Number(b.dataset.guideSkip)] = true; render(); }));
+  q("[data-guide-skip]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.guideSkip; guideSkipped[k] = true; Sync.db.update(sp("private"), { ["guideSkipped/" + k]: true }).catch(() => {}); render(); }));
   q(".tools [data-tab]").forEach((b) => b.addEventListener("click", () => { T.tab = b.dataset.tab; render(); }));
   q("[data-pub]").forEach((b) => b.addEventListener("click", () => publishNext(Number(b.dataset.pub))));
   q("[data-pubtask]").forEach((b) => b.addEventListener("click", () => publishNext(1)));
