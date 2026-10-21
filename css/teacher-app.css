@@ -1,5 +1,5 @@
 /* ===================== 교사 대시보드 ===================== */
-:root { --accent: #1a8cff; --ink: #1d1c1d; --sub: #6b7280; --line: #e3e5e8; --font: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+:root { --accent: #1a8cff; --ink: #1d1c1d; --sub: #6b7280; --line: #e3e5e8; --font: "Apple SD Gothic Neo", "AppleSDGothicNeo", -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: var(--font); background: #f5f6f8; color: var(--ink); font-size: 14px; }
 button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 8px; height: 34px; padding: 0 12px; }

@@ -7,8 +7,7 @@
   --line-soft: #dddddd;
   --danger: #e01e5a;
   --notice-bg: #f8f8f8;
-  --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
-    "Malgun Gothic", sans-serif;
+  --font: "Apple SD Gothic Neo", "AppleSDGothicNeo", -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
   --w: 400px;
 }
 

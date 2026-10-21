@@ -1,5 +1,5 @@
 /* ===================== 빔프로젝터 화면 ===================== */
-:root { --font: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+:root { --font: "Apple SD Gothic Neo", "AppleSDGothicNeo", -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif; }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { font-family: var(--font); background: #0c1528; color: #e5e9f2; font-size: 20px; overflow: hidden; }
