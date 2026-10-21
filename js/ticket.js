@@ -28,9 +28,12 @@ function reserveBugActive() {
 }
 function reserveWorks() {
   if (!reserveBugActive()) return true;
+  // TASK-004 부터는 스토리상 예매 버튼이 고쳐진 상태 (교사가 공식 반영을 누르지 않았어도)
+  if (G.state.task4 && (G.state.task4.assigned || G.state.task4.started)) return true;
   if (G.live) {
     const p = (typeof Live !== "undefined" && Live.public) || {};
     if (p.officialService && p.officialService.reserveFixed) return true;
+    const t4 = p.tasks && p.tasks.t4 && p.tasks.t4.status; if (t4 && t4 !== "LOCKED") return true;
   } else if (G.state.task3.done) return true;
   return !!G.state.task3.codeFixed || (typeof codeResolves3 === "function" && codeResolves3());
 }
@@ -92,6 +95,7 @@ function renderTicket() {
     ${ttLocal.modal ? recordModalHTML(screen) : ""}
     ${ttLocal.confirmRestart ? restartModalHTML() : ""}
   `;
+  requestAnimationFrame(() => { const bar = ticketAppEl.querySelector(".tt-bar"); if (bar) ticketAppEl.style.setProperty("--ttbar-h", bar.offsetHeight + "px"); });
 }
 
 function testBarHTML(screen) {
