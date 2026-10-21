@@ -193,9 +193,10 @@ function mirrorProgress() {
   lastProgressJson = json;
   Sync.db.update(sp("public"), { progress: prog }).catch(() => {});
 }
+function safe(fn) { try { fn(); } catch (e) { console.error(e); } }
 function selectSession(sid) {
   T.unsubs.forEach((u) => u()); T.unsubs = [];
-  clearInterval(T.clockTimer);
+  clearInterval(T.clockTimer); clearInterval(T.pollTimer);
   T.sid = sid; T.pub = null; T.priv = null; T.events = []; T.teams = {}; T.requests = {}; T.teamData = {};
   if (!sid) { render(); return; }
   T.unsubs.push(Sync.db.on(sp("public"), (v) => { const prevTask = T.pub && T.pub.currentTask; T.pub = v; if (v && v.currentTask !== prevTask) mirrorProgress(); render(); }));
@@ -203,7 +204,19 @@ function selectSession(sid) {
   T.unsubs.push(Sync.db.on(sp("events"), (v) => { T.events = Object.values(v || {}).sort((a, b) => a.seq - b.seq); render(); }));
   T.unsubs.push(Sync.db.on(sp("teams"), (v) => { T.teams = v || {}; render(); }));
   T.unsubs.push(Sync.db.on(sp("joinRequests"), (v) => { T.requests = v || {}; render(); }));
-  T.unsubs.push(Sync.db.on(sp("teamData"), (v) => { T.teamData = v || {}; mirrorProgress(); render(); }));
+  T.unsubs.push(Sync.db.on(sp("teamData"), (v) => { T.teamData = v || {}; safe(mirrorProgress); render(); }));
+  // 안전망: 실시간 알림을 놓쳐도 8초마다 팀 데이터·입장 요청을 다시 읽어 화면을 맞춘다 (보고서 제출·상태 변경이 새로고침 없이 보이도록)
+  clearInterval(T.pollTimer);
+  T.pollTimer = setInterval(async () => {
+    if (!T.sid) return;
+    try {
+      const [td, rq] = await Promise.all([Sync.db.get(sp("teamData")), Sync.db.get(sp("joinRequests"))]);
+      let changed = false;
+      if (JSON.stringify(td || {}) !== JSON.stringify(T.teamData)) { T.teamData = td || {}; safe(mirrorProgress); changed = true; }
+      if (JSON.stringify(rq || {}) !== JSON.stringify(T.requests)) { T.requests = rq || {}; changed = true; }
+      if (changed) render();
+    } catch (e) { /* 연결 문제는 다음 주기에 재시도 */ }
+  }, 8000);
   // 게임 시각: 교사 화면이 켜져 있는 동안 1분마다 1분씩 진행(일시정지 제외)
   T.clockTimer = setInterval(() => {
     if (!T.pub || T.pub.status !== "running") return;
@@ -459,6 +472,9 @@ async function review(teamId, no, status, locked) {
 //  렌더링
 // =====================================================================
 function render() {
+  try { renderInner(); } catch (e) { console.error("render error", e); const el = document.getElementById("render-error"); if (!el) { const d = document.createElement("div"); d.id = "render-error"; d.style.cssText = "position:fixed;left:12px;bottom:12px;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;font-size:12px;z-index:999"; d.textContent = "화면 그리기 오류: " + (e.message || e) + " — 새로고침해 주세요"; document.body.appendChild(d); } }
+}
+function renderInner() {
   if (!T.user || T.user.isAnonymous) return renderLogin();
   if (!T.contentReady) return renderContentSetup();
   if (!T.sid) return renderSessions();
