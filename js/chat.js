@@ -599,7 +599,8 @@ async function applyLiveEvent(ev, silent) {
       if (!silent) toast({ title: "DAYEON DESIGN", sub: "해설 공개", text: "검수 결과와 원칙 분석 해설을 확인할 수 있습니다.", app: "design" });
       break;
     case "debrief":
-      appendMessage("ticketon", { from: "kim", text: `[${ev.title}]\n${ev.text}`, at: ev.at }, { notify: !silent });
+      // 해설은 프로젝터(수업 화면)에만 표시. 학생 화면에는 안내만
+      if (!silent) toast({ title: "DAYEON WORK", sub: ev.title || "해설", text: "해설이 프로젝터 화면에 공개되었습니다. 앞을 보고 발표·토론을 준비하세요." });
       break;
     case "official":
       if (G.state.currentApp === "ticket") renderTicket();

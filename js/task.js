@@ -20,7 +20,20 @@ document.getElementById("t-me-avatar").textContent = PLAYER.name[0];
 document.getElementById("t-me-name").textContent = `${PLAYER.name} · ${PLAYER.dept}`;
 
 // ---------- 앱 전환 ----------
-function showApp(name) {
+// 업무 도구는 해당 업무를 시작한 뒤에만 열림 (메뉴·첨부·버튼 등 모든 경로 공통)
+function appUnlocked(name) {
+  const st = G.state;
+  if (name === "ticket") return !!st.task.started;
+  if (name === "design") return !!(st.task2.started || (st.task4 && st.task4.started) || (st.task5 && st.task5.started));
+  if (name === "dev") return !!(st.task3.started || (st.task4 && st.task4.started));
+  if (name === "ops") return !!((st.task5 && st.task5.started) || (st.task6 && st.task6.started));
+  return true;
+}
+function showApp(name, silent = false) {
+  if (!appUnlocked(name)) {
+    if (!silent) toast({ title: "DAYEON WORK", sub: { ticket: "TICKET ON", design: "DAYEON DESIGN", dev: "DAYEON DEV TOOLS", ops: "DAYEON DEPLOY" }[name] || name, text: "관련 업무를 시작하면 열 수 있습니다. 업무 상세에서 [업무 시작하기]를 누르세요." });
+    name = ["work", "task"].includes(currentApp) ? currentApp : "task";
+  }
   currentApp = name;
   G.state.currentApp = name;
   workApp.hidden = name !== "work";
@@ -1125,4 +1138,4 @@ function openDesign(tab = "review", version = null) {
 }
 
 // ---------- 초기 앱 복원 ----------
-showApp(G.state.currentApp || "work");
+showApp(G.state.currentApp || "work", true);

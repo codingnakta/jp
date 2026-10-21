@@ -163,17 +163,47 @@ async function createSession(title) {
   await loadSessions();
   selectSession(sid);
 }
+// ---------- 프로젝터용 팀 진행 요약 (public.progress) — 단계 수·제출·승인만, 보고서 내용은 포함하지 않음 ----------
+function teamProgress(no, st) {
+  const t = (k) => st[k] || {};
+  const n = (a) => (Array.isArray(a) ? a.length : 0);
+  let steps;
+  if (no === 1) { const s = t("task"); steps = [s.inquiriesViewed || n(s.inquiriesOpened) >= 3, n(s.reproduced) > 0, s.reportSubmitted]; }
+  else if (no === 2) { const s = t("task2"); steps = [n(s.findings) > 0, !!s.principlesChecked, !!s.designApplied, !!s.reportSubmitted]; }
+  else if (no === 3) { const s = t("task3"); steps = [n(s.reproductions) > 0, n(s.clues) > 0, !!s.codeFixed, ((s.retest || {}).passes || 0) >= 2, !!s.reportSubmitted]; }
+  else if (no === 4) { const s = t("task4"); steps = [n(s.reproductions) > 0, !!s.logViewed, !!s.uiApplied, !!s.codeOk, !!s.qa, !!s.reportSubmitted]; }
+  else if (no === 5) { const s = t("task5"); steps = [n(s.fileNotes) > 0, !!s.designHistoryViewed && n(s.commitsViewed) > 0, n(s.deploysViewed) > 0 && n(s.evidence) > 0, !!(s.timeline && s.timeline.passed), !!s.reportSubmitted]; }
+  else if (no === 6) { const s = t("task6"); steps = [!!(s.candidate && s.candidate.id), !!(s.qa && s.qa.run === s.qa.total), !!(s.meeting && s.meeting.decision), !!s.reportSubmitted, !!(s.release && s.release.requested), !!s.postCheckDone]; }
+  else steps = [];
+  return { done: steps.filter(Boolean).length, total: steps.length };
+}
+let lastProgressJson = "";
+function mirrorProgress() {
+  if (!T.pub || !T.sid) return;
+  const no = T.pub.currentTask || 0;
+  const prog = {};
+  Object.entries(T.teams).forEach(([tid, tm]) => {
+    const d = T.teamData[tid] || {}; const st = d.state || {};
+    const p = no ? teamProgress(no, st) : { done: 0, total: 0 };
+    const sub = d.submissions && d.submissions["t" + no]; const rv = d.review && d.review["t" + no];
+    prog[tid] = { name: tm.name, no, done: p.done, total: p.total, submitted: !!sub, approved: !!(rv && rv.status === "approved"), returned: !!(rv && rv.status === "returned"), app: st.currentApp || null };
+  });
+  const json = JSON.stringify(prog);
+  if (json === lastProgressJson) return;
+  lastProgressJson = json;
+  Sync.db.update(sp("public"), { progress: prog }).catch(() => {});
+}
 function selectSession(sid) {
   T.unsubs.forEach((u) => u()); T.unsubs = [];
   clearInterval(T.clockTimer);
   T.sid = sid; T.pub = null; T.priv = null; T.events = []; T.teams = {}; T.requests = {}; T.teamData = {};
   if (!sid) { render(); return; }
-  T.unsubs.push(Sync.db.on(sp("public"), (v) => { T.pub = v; render(); }));
+  T.unsubs.push(Sync.db.on(sp("public"), (v) => { const prevTask = T.pub && T.pub.currentTask; T.pub = v; if (v && v.currentTask !== prevTask) mirrorProgress(); render(); }));
   T.unsubs.push(Sync.db.on(sp("private"), (v) => { T.priv = v || { nextIndex: 0 }; render(); }));
   T.unsubs.push(Sync.db.on(sp("events"), (v) => { T.events = Object.values(v || {}).sort((a, b) => a.seq - b.seq); render(); }));
   T.unsubs.push(Sync.db.on(sp("teams"), (v) => { T.teams = v || {}; render(); }));
   T.unsubs.push(Sync.db.on(sp("joinRequests"), (v) => { T.requests = v || {}; render(); }));
-  T.unsubs.push(Sync.db.on(sp("teamData"), (v) => { T.teamData = v || {}; render(); }));
+  T.unsubs.push(Sync.db.on(sp("teamData"), (v) => { T.teamData = v || {}; mirrorProgress(); render(); }));
   // 게임 시각: 교사 화면이 켜져 있는 동안 1분마다 1분씩 진행(일시정지 제외)
   T.clockTimer = setInterval(() => {
     if (!T.pub || T.pub.status !== "running") return;

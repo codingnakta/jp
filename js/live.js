@@ -53,7 +53,7 @@ const Live = {
     G.saveNow = function () { origSaveNow(); Live.queueSave(); };
     G.save = function () { clearTimeout(G._saveTimer); G._saveTimer = setTimeout(G.saveNow, 250); };
     await Live.drain();
-    showApp(G.state.currentApp || "work");
+    showApp(G.state.currentApp || "work", true);
     openRoom(G.state.currentRoom || "notice");
     Live.renderBadge();
   },
