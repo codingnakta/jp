@@ -468,15 +468,50 @@ async function publishEnding() {
 // ---------- 검토 ----------
 async function review(teamId, no, status, locked) {
   const note = (T.note[`${teamId}-${no}`] || "").trim();
+  T.note[`${teamId}-${no}`] = "";   // DB 갱신 알림으로 화면이 먼저 다시 그려지므로, 그 전에 비워야 메모칸이 비워진다
   await Sync.db.update(sp(`teamData/${teamId}/review/t${no}`), { status, note, locked: !!locked, at: Date.now(), by: Sync.auth.uid });
-  T.note[`${teamId}-${no}`] = "";
+  render();
 }
 
 // =====================================================================
 //  렌더링
 // =====================================================================
+// 화면은 DB 알림(팀 접속 신호 lastSeen 20초마다, 팀 상태 저장 등)마다 통째로 다시 그려진다.
+// 그대로 두면 교사가 메모를 입력하는 도중 textarea 가 새 요소로 바뀌어 포커스·커서·한글 조합 중인 글자가 사라진다.
+// → 한글 조합 중에는 다시 그리기를 미루고, 그 외에는 입력 중인 칸의 값·커서·포커스를 다시 그린 뒤 되살린다.
+const FIELD_SEL = "textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit])";
+let imeComposing = false, renderDeferred = false;
+function fieldSelector(el) {
+  const a = [...el.attributes].find((x) => x.name.startsWith("data-"));
+  if (a) return `${el.tagName.toLowerCase()}[${a.name}="${a.value.replace(/"/g, '\\"')}"]`;
+  if (el.id) return `#${el.id}`;
+  return null;
+}
+function captureFocus() {
+  const el = document.activeElement;
+  if (!el || !app.contains(el) || !el.matches(FIELD_SEL)) return null;
+  const sel = fieldSelector(el); if (!sel) return null;
+  const text = el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && typeof el.selectionStart === "number");
+  return { sel, value: el.value, text, start: text ? el.selectionStart : 0, end: text ? el.selectionEnd : 0, scrollTop: el.scrollTop, pageY: window.scrollY };
+}
+function restoreFocus(k) {
+  if (!k) return;
+  const el = app.querySelector(k.sel); if (!el || el.disabled) return;
+  if (el.value !== k.value) el.value = k.value;   // 입력 중이던 값이 우선 (다시 그리는 사이에 바뀐 상태보다 교사가 치고 있던 글이 중요)
+  el.focus({ preventScroll: true });
+  if (k.text) { try { el.setSelectionRange(k.start, k.end); } catch (e) { /* 지원하지 않는 타입 */ } }
+  el.scrollTop = k.scrollTop;
+  window.scrollTo(window.scrollX, k.pageY);
+}
+app.addEventListener("compositionstart", () => { imeComposing = true; });
+app.addEventListener("compositionend", () => { imeComposing = false; if (renderDeferred) { renderDeferred = false; setTimeout(render, 0); } });
 function render() {
+  if (imeComposing) { renderDeferred = true; return; }
+  const keep = captureFocus();
+  const extra = typeof editorSnapshot === "function" ? editorSnapshot() : null;
   try { renderInner(); } catch (e) { console.error("render error", e); const el = document.getElementById("render-error"); if (!el) { const d = document.createElement("div"); d.id = "render-error"; d.style.cssText = "position:fixed;left:12px;bottom:12px;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;font-size:12px;z-index:999"; d.textContent = "화면 그리기 오류: " + (e.message || e) + " — 새로고침해 주세요"; document.body.appendChild(d); } }
+  if (extra && typeof editorRestore === "function") editorRestore(extra);
+  restoreFocus(keep);
 }
 function renderInner() {
   if (!T.user || T.user.isAnonymous) return renderLogin();

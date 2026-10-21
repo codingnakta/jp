@@ -99,7 +99,7 @@ function evalEditorHTML(tid) {
   const ev = d.eval || { ...draft, status: "DRAFT", verdict: null };
   const published = ev.status === "PUBLISHED";
   const stats = [1, 2, 3, 4, 5, 6].map((no) => { const k = no === 1 ? "task" : "task" + no; const s = st[k] || {}; return `<li>TASK-00${no}: ${s.started ? (s.done ? "완료" : s.reportSubmitted ? "제출" : "진행 중") : "미시작"}</li>`; }).join("");
-  return `<section class="card">
+  return `<section class="card" data-ev-editor="${tid}">
     <h3>${esc(t.name)} 팀 평가 편집 <span class="phase ${ev.status === "PUBLISHED" ? "COMPLETED" : ev.status === "READY" ? "ACTIVE" : "ANNOUNCED"}">${{ DRAFT: "작성 중", READY: "공개 준비 완료", PUBLISHED: "공개됨" }[ev.status]}</span><button class="x" data-ev-team="">닫기</button></h3>
     <div class="cols">
       <div><h4>업무 실적</h4><ul class="list">${stats}</ul><p class="small">자동 집계 초안: ${EVAL.items.map((i) => `${i.name} ${draft.scores[i.id] == null ? "미평가" : draft.scores[i.id]}`).join(" · ")}</p><button data-ev-reset="${tid}" ${published ? "disabled" : ""}>초안으로 되돌리기</button></div>
@@ -124,11 +124,36 @@ function readEvalEditor(tid) {
   const comment = app.querySelector("[data-ev-comment]").value.trim();
   return { scores, basis: draft.basis, titles, comment, verdict, doneCount: draft.doneCount };
 }
+// 평가 편집기의 입력값은 저장 전까지 화면에만 있다. 화면이 다시 그려질 때(팀 접속 신호 등) 지워지지 않도록
+// 교사가 손댄 뒤에는(EV.dirty) 값을 떠서 다시 그린 후 되살린다. teacher-app.js 의 render() 가 호출한다.
+function editorSnapshot() {
+  const root = app.querySelector("[data-ev-editor]"); if (!root || !EV.dirty) return null;
+  const v = (sel) => { const el = root.querySelector(sel); return el ? el.value : undefined; };
+  return {
+    tid: root.dataset.evEditor,
+    scores: Object.fromEntries([...root.querySelectorAll("[data-ev-score]")].map((el) => [el.dataset.evScore, el.value])),
+    main: v("[data-ev-main]"),
+    extras: [...root.querySelectorAll("[data-ev-extra]")].map((el) => [el.dataset.evExtra, el.checked]),
+    verdict: (root.querySelector('input[name="ev-verdict"]:checked') || {}).value || null,
+    comment: v("[data-ev-comment]"),
+  };
+}
+function editorRestore(s) {
+  const root = app.querySelector(`[data-ev-editor="${s.tid}"]`); if (!root) { EV.dirty = false; return; }
+  const set = (sel, val) => { const el = root.querySelector(sel); if (el && !el.disabled && val !== undefined) el.value = val; };
+  Object.entries(s.scores).forEach(([id, val]) => set(`[data-ev-score="${id}"]`, val));
+  set("[data-ev-main]", s.main);
+  s.extras.forEach(([id, on]) => { const el = root.querySelector(`[data-ev-extra="${id}"]`); if (el && !el.disabled) el.checked = on; });
+  root.querySelectorAll('input[name="ev-verdict"]').forEach((el) => { if (!el.disabled) el.checked = el.value === s.verdict; });
+  set("[data-ev-comment]", s.comment);
+}
+app.addEventListener("input", (e) => { if (e.target.closest("[data-ev-editor]")) EV.dirty = true; });
+app.addEventListener("change", (e) => { if (e.target.closest("[data-ev-editor]")) EV.dirty = true; });
 app.addEventListener("click", async (e) => {
   const t = (sel) => e.target.closest(sel);
-  const team = t("[data-ev-team]"); if (team) { EV.team = team.dataset.evTeam || null; EV.preview = false; render(); return; }
-  const sv = t("[data-ev-save]"); if (sv) { const [tid, status] = sv.dataset.evSave.split(":"); const doc = readEvalEditor(tid); await Sync.db.update(sp(`teamData/${tid}/eval`), { ...doc, status, updatedAt: Date.now(), by: Sync.auth.uid }); flash(`${T.teams[tid].name} 팀 평가를 저장했습니다 (${status === "READY" ? "공개 준비 완료" : "작성 중"}).`); return; }
-  const rs = t("[data-ev-reset]"); if (rs) { const tid = rs.dataset.evReset; const draft = computeEvalDraft((T.teamData[tid] || {}).state || {}, T.teams[tid].name); await Sync.db.set(sp(`teamData/${tid}/eval`), { ...draft, status: "DRAFT", verdict: null, updatedAt: Date.now() }); return; }
+  const team = t("[data-ev-team]"); if (team) { EV.team = team.dataset.evTeam || null; EV.preview = false; EV.dirty = false; render(); return; }
+  const sv = t("[data-ev-save]"); if (sv) { const [tid, status] = sv.dataset.evSave.split(":"); const doc = readEvalEditor(tid); EV.dirty = false; await Sync.db.update(sp(`teamData/${tid}/eval`), { ...doc, status, updatedAt: Date.now(), by: Sync.auth.uid }); flash(`${T.teams[tid].name} 팀 평가를 저장했습니다 (${status === "READY" ? "공개 준비 완료" : "작성 중"}).`); return; }
+  const rs = t("[data-ev-reset]"); if (rs) { const tid = rs.dataset.evReset; EV.dirty = false; const draft = computeEvalDraft((T.teamData[tid] || {}).state || {}, T.teams[tid].name); await Sync.db.set(sp(`teamData/${tid}/eval`), { ...draft, status: "DRAFT", verdict: null, updatedAt: Date.now() }); return; }
   const pv = t("[data-ev-preview]"); if (pv) { EV.preview = !EV.preview; render(); return; }
   if (t("[data-ev-publish]")) { publishEval(); return; }
   if (t("[data-ev-leave]")) { approveLeave(); return; }
